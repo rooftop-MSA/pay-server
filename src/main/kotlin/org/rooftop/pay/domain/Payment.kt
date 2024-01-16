@@ -23,7 +23,7 @@ class Payment(
     val price: Long,
 
     @Column("state")
-    private val state: PaymentState = PaymentState.PENDING,
+    val state: PaymentState = PaymentState.PENDING,
 
     @Version
     private var version: Int? = null,
@@ -48,4 +48,17 @@ class Payment(
     ) : this(id, userId, orderId, price, state, version, false, createdAt, modifiedAt)
 
     override fun getId(): Long = id
+
+    fun fail(): Payment {
+        return Payment(
+            id,
+            userId,
+            orderId,
+            price,
+            PaymentState.FAILED,
+            version!!,
+            createdAt!!,
+            modifiedAt!!
+        )
+    }
 }
