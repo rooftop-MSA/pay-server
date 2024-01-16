@@ -1,4 +1,4 @@
-package org.rooftop.pay.app
+package org.rooftop.pay.integration
 
 import io.kotest.core.annotation.DisplayName
 import io.kotest.core.spec.style.DescribeSpec
@@ -6,33 +6,42 @@ import org.rooftop.api.pay.payRegisterOrderReq
 import org.rooftop.api.transaction.TransactionState
 import org.rooftop.api.transaction.transaction
 import org.rooftop.pay.Application
+import org.rooftop.pay.app.RedisAssertions
 import org.rooftop.pay.domain.R2dbcConfigurer
 import org.rooftop.pay.infra.transaction.RedisContainer
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate
 import org.springframework.test.context.ContextConfiguration
+import org.springframework.test.web.reactive.server.WebTestClient
 
-@SpringBootTest
-@DisplayName("CreatePayFacade 클래스의")
+@AutoConfigureWebTestClient
+@DisplayName("통합테스트의")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(
     classes = [
         Application::class,
-        R2dbcConfigurer::class,
         RedisContainer::class,
-        RedisAssertions::class
+        RedisAssertions::class,
+        R2dbcConfigurer::class,
     ]
 )
-internal class CreatePayFacadeTest(
-    private val createPayFacade: CreatePayFacade,
+internal class IntegrationTest(
+    private val api: WebTestClient,
     private val redisAssertions: RedisAssertions,
+    private val r2dbcEntityTemplate: R2dbcEntityTemplate,
 ) : DescribeSpec({
 
-    describe("createPayment 메소드는") {
-        context("상품을 생성하고,") {
-            it("트랜잭션에 조인한다.") {
-                createPayFacade.createPayment(payRegisterOrderReq).block()
+    afterEach {
+        r2dbcEntityTemplate.clearAll()
+    }
 
+    describe("createPay api는") {
+        context("등록할 주문 정보와 transaction id를 전달받으면, ") {
+            it("결제를 대기상태로 생성한다.") {
+                val result = api.createPay(payRegisterOrderReq)
+
+                result.expectStatus().isOk
                 redisAssertions.assertUndoPaymentExist(payRegisterOrderReq.transactionId)
                 redisAssertions.assertTransactionServer(
                     payRegisterOrderReq.transactionId,
@@ -43,12 +52,12 @@ internal class CreatePayFacadeTest(
     }
 }) {
 
-    private companion object {
+    companion object {
         private val payRegisterOrderReq = payRegisterOrderReq {
             this.orderId = 1L
             this.userId = 2L
-            this.transactionId = "123"
             this.price = 10_000L
+            this.transactionId = "4971626623122412"
         }
 
         private val joinTransaction = transaction {
