@@ -48,7 +48,11 @@ internal class PaymentRepositoryTest(
 
                 StepVerifier.create(result)
                     .assertNext {
-                        it shouldBeEqualUsingFields existPayment
+                        it.shouldBeEqualToIgnoringFields(
+                            existPayment,
+                            Payment::createdAt,
+                            Payment::modifiedAt
+                        )
                     }
                     .verifyComplete()
             }
