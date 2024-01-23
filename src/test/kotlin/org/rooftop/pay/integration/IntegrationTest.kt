@@ -2,6 +2,8 @@ package org.rooftop.pay.integration
 
 import io.kotest.core.annotation.DisplayName
 import io.kotest.core.spec.style.DescribeSpec
+import org.rooftop.api.pay.PayPointReq
+import org.rooftop.api.pay.payPointReq
 import org.rooftop.api.pay.payRegisterOrderReq
 import org.rooftop.api.transaction.TransactionState
 import org.rooftop.api.transaction.transaction
@@ -50,9 +52,24 @@ internal class IntegrationTest(
             }
         }
     }
+
+    describe("payPoint api 는") {
+        context("포인트가 충분한 유저가 결제를 요청할 경우,") {
+
+            api.createPay(payRegisterOrderReq)
+
+            it("결제에 성공한다.") {
+                val result = api.payPoint(VALID_TOKEN, payPointReq)
+
+                result.expectStatus().isOk
+            }
+        }
+    }
 }) {
 
     companion object {
+        private const val VALID_TOKEN = "VALID_TOKEN"
+
         private val payRegisterOrderReq = payRegisterOrderReq {
             this.orderId = 1L
             this.userId = 2L
@@ -64,6 +81,10 @@ internal class IntegrationTest(
             this.id = payRegisterOrderReq.transactionId
             this.serverId = "pay-1"
             this.state = TransactionState.TRANSACTION_STATE_JOIN
+        }
+
+        private val payPointReq = payPointReq {
+            this.orderId = payRegisterOrderReq.orderId
         }
     }
 }
