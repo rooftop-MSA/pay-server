@@ -18,14 +18,14 @@ import kotlin.time.Duration.Companion.seconds
         RedisContainer::class,
         ByteArrayRedisSerializer::class,
         ReactiveRedisConfigurer::class,
-        PayTransactionPublisher::class,
+        PayTransactionManager::class,
         PayTransactionListener::class,
     ]
 )
 @TestPropertySource("classpath:application.properties")
 internal class PayTransactionListenerTest(
     private val eventCapture: EventCapture,
-    private val transactionPublisher: PayTransactionPublisher,
+    private val transactionPublisher: PayTransactionManager,
 ) : DescribeSpec({
 
     afterEach { eventCapture.clear() }

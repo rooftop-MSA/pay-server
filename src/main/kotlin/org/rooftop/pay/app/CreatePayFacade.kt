@@ -9,21 +9,21 @@ import reactor.core.publisher.Mono
 @Service
 class CreatePayFacade(
     private val payService: PayService,
-    private val transactionPublisher: TransactionPublisher<UndoPayment>,
+    private val transactionManager: TransactionManager<UndoPayment>,
 ) {
 
     fun createPayment(payRegisterOrderReq: PayRegisterOrderReq): Mono<Payment> {
         return payService.createPayment(payRegisterOrderReq)
             .joinTransaction(payRegisterOrderReq.transactionId)
             .doOnError {
-                transactionPublisher.rollback(payRegisterOrderReq.transactionId)
+                transactionManager.rollback(payRegisterOrderReq.transactionId)
                 throw it
             }
     }
 
     private fun Mono<Payment>.joinTransaction(transactionId: String): Mono<Payment> {
         return this.flatMap { payment ->
-            transactionPublisher.join(transactionId, UndoPayment(payment.id))
+            transactionManager.join(transactionId, UndoPayment(payment.id))
                 .map { payment }
         }
     }

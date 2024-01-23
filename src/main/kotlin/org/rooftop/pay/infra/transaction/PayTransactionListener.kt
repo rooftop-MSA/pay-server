@@ -20,18 +20,18 @@ import reactor.core.scheduler.Schedulers
 class PayTransactionListener(
     private val eventPublisher: ApplicationEventPublisher,
     @Qualifier("transactionServerConnectionFactory") private val connectionFactory: ReactiveRedisConnectionFactory,
-    @Qualifier("undoServer") private val payUndoServer: ReactiveRedisTemplate<String, UndoPayment>,
+    @Qualifier("payUndoServer") private val payUndoServer: ReactiveRedisTemplate<String, UndoPayment>,
 ) {
 
-    @EventListener(TransactionJoinedEvent::class)
-    fun subscribeStream(transactionJoinedEvent: TransactionJoinedEvent) {
+    @EventListener(PayTransactionJoinedEvent::class)
+    fun subscribeStream(payTransactionJoinedEvent: PayTransactionJoinedEvent) {
         val options = StreamReceiverOptions.builder()
             .pollTimeout(java.time.Duration.ofMillis(100))
             .build()
 
         val receiver = StreamReceiver.create(connectionFactory, options)
 
-        receiver.receive(StreamOffset.fromStart(transactionJoinedEvent.transactionId))
+        receiver.receive(StreamOffset.fromStart(payTransactionJoinedEvent.transactionId))
             .subscribeOn(Schedulers.boundedElastic())
             .map { Transaction.parseFrom(it.value["data"]?.toByteArray()) }
             .dispatch()
