@@ -7,8 +7,8 @@ import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.time.Instant
 
-@Table("payment")
-class Payment(
+@Table("point")
+class Point(
     @Id
     @Column("id")
     val id: Long,
@@ -16,14 +16,8 @@ class Payment(
     @Column("user_id")
     val userId: Long,
 
-    @Column("order_id")
-    val orderId: Long,
-
-    @Column("price")
-    val price: Long,
-
-    @Column("state")
-    val state: PaymentState = PaymentState.PENDING,
+    @Column("point")
+    private val point: Long,
 
     @Version
     private var version: Int? = null,
@@ -39,26 +33,11 @@ class Payment(
     private constructor(
         id: Long,
         userId: Long,
-        orderId: Long,
-        price: Long,
-        state: PaymentState,
+        point: Long,
         version: Int,
         createdAt: Instant,
         modifiedAt: Instant,
-    ) : this(id, userId, orderId, price, state, version, false, createdAt, modifiedAt)
+    ) : this(id, userId, point, version, false, createdAt, modifiedAt)
 
     override fun getId(): Long = id
-
-    fun fail(): Payment {
-        return Payment(
-            id,
-            userId,
-            orderId,
-            price,
-            PaymentState.FAILED,
-            version!!,
-            createdAt!!,
-            modifiedAt!!
-        )
-    }
 }
