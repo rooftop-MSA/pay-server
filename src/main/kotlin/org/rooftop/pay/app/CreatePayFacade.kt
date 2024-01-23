@@ -15,6 +15,10 @@ class CreatePayFacade(
     fun createPayment(payRegisterOrderReq: PayRegisterOrderReq): Mono<Payment> {
         return payService.createPayment(payRegisterOrderReq)
             .joinTransaction(payRegisterOrderReq.transactionId)
+            .doOnError {
+                transactionPublisher.rollback(payRegisterOrderReq.transactionId)
+                throw it
+            }
     }
 
     private fun Mono<Payment>.joinTransaction(transactionId: String): Mono<Payment> {
