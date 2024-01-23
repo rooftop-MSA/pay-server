@@ -17,7 +17,7 @@ class Point(
     val userId: Long,
 
     @Column("point")
-    private val point: Long,
+    private var point: Long,
 
     @Version
     private var version: Int? = null,
@@ -40,4 +40,11 @@ class Point(
     ) : this(id, userId, point, version, false, createdAt, modifiedAt)
 
     override fun getId(): Long = id
+
+    fun pay(price: Long) {
+        require(point >= price) {
+            "Not enough point to pay point(\"$point\") < price(\"$price\")"
+        }
+        this.point -= price
+    }
 }
