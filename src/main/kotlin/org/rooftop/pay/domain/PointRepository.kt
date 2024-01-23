@@ -6,4 +6,6 @@ import reactor.core.publisher.Mono
 interface PointRepository : R2dbcRepository<Point, Long> {
 
     fun findByUserId(userId: Long): Mono<Point>
+
+    fun existsByUserId(userId: Long): Mono<Boolean>
 }

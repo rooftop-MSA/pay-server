@@ -37,6 +37,10 @@ class PointService(
         )
     }
 
+    fun exists(userId: Long): Mono<Boolean> {
+        return pointRepository.existsByUserId(userId)
+    }
+
     private companion object {
         private const val NEW_USER_BONUS_POINT = 1_000L
     }

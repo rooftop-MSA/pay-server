@@ -53,4 +53,13 @@ class PayService(
             )
             .map { }
     }
+
+    fun getByOrderId(orderId: Long): Mono<Payment> {
+        return paymentRepository.findByOrderId(orderId)
+            .switchIfEmpty(
+                Mono.error {
+                    throw IllegalArgumentException("Cannot find exists payment by order-id \"$orderId\"")
+                }
+            )
+    }
 }

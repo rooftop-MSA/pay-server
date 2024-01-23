@@ -95,4 +95,33 @@ internal class PointServiceTest(
         }
     }
 
+    describe("exists 메소드는") {
+        context("userId에 해당하는 Point가 이미 저장되어 있다면,") {
+
+            val userId = 5L
+            pointService.createPoint(userId).block()
+
+            it("true를 반환한다.") {
+                val result = pointService.exists(userId)
+
+                StepVerifier.create(result)
+                    .expectNext(true)
+                    .verifyComplete()
+            }
+        }
+
+        context("userId에 해당하는 Point가 저장되어 있지 않다면,") {
+
+            val userId = 6L
+
+            it("false를 반환한다.") {
+                val result = pointService.exists(userId)
+
+                StepVerifier.create(result)
+                    .expectNext(false)
+                    .verifyComplete()
+            }
+        }
+    }
+
 })
