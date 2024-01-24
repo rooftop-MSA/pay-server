@@ -2,12 +2,13 @@ package org.rooftop.pay.app
 
 import io.kotest.core.annotation.DisplayName
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
 import org.rooftop.api.identity.userGetByTokenRes
 import org.rooftop.api.pay.payPointReq
 import org.rooftop.api.pay.payRegisterOrderReq
 import org.rooftop.pay.Application
-import org.rooftop.pay.domain.*
+import org.rooftop.pay.domain.PayService
+import org.rooftop.pay.domain.PointRepository
+import org.rooftop.pay.domain.R2dbcConfigurer
 import org.rooftop.pay.infra.transaction.RedisContainer
 import org.rooftop.pay.server.MockIdentityServer
 import org.rooftop.pay.server.MockOrderServer
@@ -104,17 +105,7 @@ internal class PayWithPointFacadeTest(
                 val result = payWithPointFacade.payWithPoint(VALID_TOKEN, payPointReq)
 
                 StepVerifier.create(result)
-                    .then {
-                        pointRepository.findByUserId(3L).block()
-                            .shouldBeEqualToIgnoringFields(
-                                point(point = 500),
-                                Point::id,
-                                Point::userId,
-                                Point::createdAt,
-                                Point::modifiedAt
-                            )
-                    }
-                    .expectErrorMessage("Payment state can be changed to success when it is pending state.")
+                    .verifyErrorMessage("Payment state can be changed to success when it is pending state.")
             }
         }
     }

@@ -42,10 +42,19 @@ class Point(
     override fun getId(): Long = id
 
     fun pay(price: Long) {
-        println(">>> $point >= $price")
         require(point >= price) {
             "Not enough point to pay point(\"$point\") < price(\"$price\")"
         }
         this.point -= price
     }
+
+    fun charge(point: Long) {
+        this.point += point
+    }
+
+    override fun toString(): String {
+        return "Point(id=$id, userId=$userId, point=$point, version=$version)"
+    }
+
+
 }

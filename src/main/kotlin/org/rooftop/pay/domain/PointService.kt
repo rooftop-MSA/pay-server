@@ -1,5 +1,6 @@
 package org.rooftop.pay.domain
 
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
@@ -39,6 +40,16 @@ class PointService(
 
     fun exists(userId: Long): Mono<Boolean> {
         return pointRepository.existsByUserId(userId)
+    }
+
+    @Transactional
+    @EventListener(PointRollbackEvent::class)
+    fun rollbackPoint(pointRollbackEvent: PointRollbackEvent): Mono<Point> {
+        return pointRepository.findById(pointRollbackEvent.id)
+            .flatMap {
+                it.charge(pointRollbackEvent.paidPoint)
+                pointRepository.save(it)
+            }
     }
 
     private companion object {

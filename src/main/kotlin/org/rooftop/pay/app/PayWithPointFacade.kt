@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 
 @Service
 class PayWithPointFacade(
@@ -33,9 +34,9 @@ class PayWithPointFacade(
             .startPointTransaction(transactionId)
             .successPay()
             .startPayTransaction(transactionId)
-            .confirmOrder(payPointReq)
             .commitOnSuccess(transactionId)
             .rollbackOnError(transactionId)
+            .confirmOrder(payPointReq)
             .map { }
     }
 
@@ -121,14 +122,19 @@ class PayWithPointFacade(
     private fun Mono<String>.commitOnSuccess(transactionId: String): Mono<String> {
         return this.doOnSuccess {
             pointTransactionManager.commit(transactionId)
-            payTransactionManager.rollback(transactionId)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe()
+            payTransactionManager.commit(transactionId)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe()
         }
     }
 
     private fun Mono<String>.rollbackOnError(transactionId: String): Mono<String> {
         return this.doOnError {
             pointTransactionManager.rollback(transactionId)
-            payTransactionManager.rollback(transactionId)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe()
         }
     }
 }

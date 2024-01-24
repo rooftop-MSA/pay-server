@@ -23,18 +23,17 @@ class PointTransactionListener(
 ) {
 
     @EventListener(PointTransactionJoinedEvent::class)
-    fun subscribeStream(pointTransactionJoinedEvent: PointTransactionJoinedEvent) {
+    fun subscribeStream(pointTransactionJoinedEvent: PointTransactionJoinedEvent): Flux<Transaction> {
         val options = StreamReceiver.StreamReceiverOptions.builder()
             .pollTimeout(java.time.Duration.ofMillis(100))
             .build()
 
         val receiver = StreamReceiver.create(connectionFactory, options)
 
-        receiver.receive(StreamOffset.fromStart(pointTransactionJoinedEvent.transactionId))
+        return receiver.receive(StreamOffset.fromStart(pointTransactionJoinedEvent.transactionId))
             .subscribeOn(Schedulers.boundedElastic())
             .map { Transaction.parseFrom(it.value["data"]?.toByteArray()) }
             .dispatch()
-            .subscribe()
     }
 
     private fun Flux<Transaction>.dispatch(): Flux<Transaction> {
