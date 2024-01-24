@@ -42,6 +42,7 @@ class Point(
     override fun getId(): Long = id
 
     fun pay(price: Long) {
+        println(">>> $point >= $price")
         require(point >= price) {
             "Not enough point to pay point(\"$point\") < price(\"$price\")"
         }

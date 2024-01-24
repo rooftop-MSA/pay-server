@@ -8,8 +8,6 @@ import org.rooftop.api.transaction.transaction
 import org.rooftop.pay.Application
 import org.rooftop.pay.domain.R2dbcConfigurer
 import org.rooftop.pay.infra.transaction.RedisContainer
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ContextConfiguration
 

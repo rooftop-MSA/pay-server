@@ -61,4 +61,20 @@ class Payment(
             modifiedAt!!
         )
     }
+
+    fun success(): Payment {
+        check(state == PaymentState.PENDING) {
+            "Payment state can be changed to success when it is pending state."
+        }
+        return Payment(
+            id,
+            userId,
+            orderId,
+            price,
+            PaymentState.SUCCESS,
+            version!!,
+            createdAt!!,
+            modifiedAt!!
+        )
+    }
 }

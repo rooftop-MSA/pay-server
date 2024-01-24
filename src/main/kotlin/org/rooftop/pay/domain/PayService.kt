@@ -34,6 +34,13 @@ class PayService(
     }
 
     @Transactional
+    fun successPayment(id: Long): Mono<Payment> {
+        return paymentRepository.findById(id)
+            .map { it.success() }
+            .flatMap { paymentRepository.save(it) }
+    }
+
+    @Transactional
     @EventListener(PayRollbackEvent::class)
     fun rollbackPayment(payRollbackEvent: PayRollbackEvent): Mono<Unit> {
         return paymentRepository.findById(payRollbackEvent.id)
