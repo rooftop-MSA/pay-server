@@ -1,5 +1,5 @@
 package org.rooftop.pay.infra.transaction
 
-data class TransactionJoinedEvent(
+data class PayTransactionJoinedEvent(
     val transactionId: String,
 )

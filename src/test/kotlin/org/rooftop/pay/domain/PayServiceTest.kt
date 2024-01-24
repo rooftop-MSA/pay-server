@@ -48,7 +48,7 @@ internal class PayServiceTest(
 }) {
     private companion object {
         private val payRegisterOrderReq = payRegisterOrderReq {
-            this.orderId = 1L
+            this.orderId = 999L
             this.userId = 1L
             this.price = 10_000
             this.transactionId = "123"

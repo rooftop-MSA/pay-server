@@ -2,7 +2,7 @@ package org.rooftop.pay.app
 
 import reactor.core.publisher.Mono
 
-interface TransactionPublisher<T> {
+interface TransactionManager<T> {
 
     fun join(transactionId: String, state: T): Mono<String>
 

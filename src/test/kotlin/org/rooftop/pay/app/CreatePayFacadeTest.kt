@@ -8,8 +8,8 @@ import org.rooftop.api.transaction.transaction
 import org.rooftop.pay.Application
 import org.rooftop.pay.domain.R2dbcConfigurer
 import org.rooftop.pay.infra.transaction.RedisContainer
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
+import org.rooftop.pay.server.MockIdentityServer
+import org.rooftop.pay.server.MockOrderServer
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ContextConfiguration
 
@@ -20,7 +20,9 @@ import org.springframework.test.context.ContextConfiguration
         Application::class,
         R2dbcConfigurer::class,
         RedisContainer::class,
-        RedisAssertions::class
+        RedisAssertions::class,
+        MockOrderServer::class,
+        MockIdentityServer::class,
     ]
 )
 internal class CreatePayFacadeTest(

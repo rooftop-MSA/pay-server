@@ -36,7 +36,7 @@ class Payment(
 ) : BaseEntity(createdAt, modifiedAt, isNew) {
 
     @PersistenceCreator
-    constructor(
+    private constructor(
         id: Long,
         userId: Long,
         orderId: Long,
@@ -56,6 +56,22 @@ class Payment(
             orderId,
             price,
             PaymentState.FAILED,
+            version!!,
+            createdAt!!,
+            modifiedAt!!
+        )
+    }
+
+    fun success(): Payment {
+        check(state == PaymentState.PENDING) {
+            "Payment state can be changed to success when it is pending state."
+        }
+        return Payment(
+            id,
+            userId,
+            orderId,
+            price,
+            PaymentState.SUCCESS,
             version!!,
             createdAt!!,
             modifiedAt!!
