@@ -22,14 +22,14 @@ class PointTransactionListener(
     @Qualifier("pointUndoServer") private val pointUndoServer: ReactiveRedisTemplate<String, UndoPoint>,
 ) {
 
+    private val options = StreamReceiver.StreamReceiverOptions.builder()
+        .pollTimeout(java.time.Duration.ofMillis(100))
+        .build()
+
+    private val receiver = StreamReceiver.create(connectionFactory, options)
+
     @EventListener(PointTransactionJoinedEvent::class)
     fun subscribeStream(pointTransactionJoinedEvent: PointTransactionJoinedEvent): Flux<Transaction> {
-        val options = StreamReceiver.StreamReceiverOptions.builder()
-            .pollTimeout(java.time.Duration.ofMillis(100))
-            .build()
-
-        val receiver = StreamReceiver.create(connectionFactory, options)
-
         return receiver.receive(StreamOffset.fromStart(pointTransactionJoinedEvent.transactionId))
             .subscribeOn(Schedulers.boundedElastic())
             .map { Transaction.parseFrom(it.value["data"]?.toByteArray()) }
