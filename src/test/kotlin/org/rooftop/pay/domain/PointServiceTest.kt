@@ -19,12 +19,13 @@ import reactor.test.StepVerifier
 @DisplayName("PointService 클래스의")
 internal class PointServiceTest(
     private val pointService: PointService,
+    private val idGenerator: IdGenerator,
 ) : DescribeSpec({
 
     describe("createPoint 메소드는") {
         context("중복된 userId가 저장되어있지 않다면,") {
 
-            val userId = 1L
+            val userId = idGenerator.generate()
             val expected = point(userId = userId)
 
             it("새로운 Point를 저장하는데 성공한다.") {
@@ -45,7 +46,7 @@ internal class PointServiceTest(
 
         context("중복된 userId가 저장되어 있다면,") {
 
-            val duplicateUserId = 2L
+            val duplicateUserId = idGenerator.generate()
             pointService.createPoint(duplicateUserId).block()
 
             it("저장에 실패하고 에러를 던진다.") {
@@ -60,7 +61,7 @@ internal class PointServiceTest(
     describe("payWithPoint 메소드는") {
         context("point 를 차감할 수 있다면,") {
 
-            val userId = 3L
+            val userId = idGenerator.generate()
             val expected = point(userId = userId, point = 0)
             pointService.createPoint(userId).block()
 
@@ -82,7 +83,7 @@ internal class PointServiceTest(
 
         context("point보다 차감할 price가 더 높다면,") {
 
-            val userId = 4L
+            val userId = idGenerator.generate()
             val price = 2_000L
             pointService.createPoint(userId).block()
 
@@ -98,7 +99,7 @@ internal class PointServiceTest(
     describe("exists 메소드는") {
         context("userId에 해당하는 Point가 이미 저장되어 있다면,") {
 
-            val userId = 5L
+            val userId = idGenerator.generate()
             pointService.createPoint(userId).block()
 
             it("true를 반환한다.") {
@@ -112,7 +113,7 @@ internal class PointServiceTest(
 
         context("userId에 해당하는 Point가 저장되어 있지 않다면,") {
 
-            val userId = 6L
+            val userId = idGenerator.generate()
 
             it("false를 반환한다.") {
                 val result = pointService.exists(userId)
