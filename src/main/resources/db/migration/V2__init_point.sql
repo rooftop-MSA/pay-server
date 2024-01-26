@@ -7,4 +7,4 @@ create table if not exists point(
   modified_at TIMESTAMP(6) not null
 );
 
-create index if not exists point_idx_user_id on point(user_id);
+create index point_idx_user_id on point(user_id);
