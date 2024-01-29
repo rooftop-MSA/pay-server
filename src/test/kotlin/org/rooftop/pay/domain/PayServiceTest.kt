@@ -8,11 +8,13 @@ import org.rooftop.api.pay.payRegisterOrderReq
 import org.rooftop.pay.infra.TsidGenerator
 import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.r2dbc.config.EnableR2dbcAuditing
 import org.springframework.test.context.ContextConfiguration
 import reactor.test.StepVerifier
 import kotlin.time.Duration.Companion.seconds
 
 @DataR2dbcTest
+@EnableR2dbcAuditing
 @ContextConfiguration(
     classes = [
         R2dbcConfigurer::class,
