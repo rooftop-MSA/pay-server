@@ -21,7 +21,7 @@ abstract class AbstractTransactionManager<T>(
             .contextWrite { it.put("transactionId", transactionId) }
     }
 
-    protected fun joinOrStartTransaction(): Mono<String> {
+    private fun joinOrStartTransaction(): Mono<String> {
         return Mono.deferContextual<String> { Mono.just(it["transactionId"]) }
             .flatMap { transactionId ->
                 publishTransaction(transactionId, transaction {
