@@ -14,8 +14,8 @@ class WebClientConfigurer(
 ) {
 
     @Bean
-    fun orderWebClient(): WebClient = WebClient.create(identityServerUri)
+    fun orderWebClient(): WebClient = WebClient.create(orderServerUri)
 
     @Bean
-    fun identityWebClient(): WebClient = WebClient.create(orderServerUri)
+    fun identityWebClient(): WebClient = WebClient.create(identityServerUri)
 }
