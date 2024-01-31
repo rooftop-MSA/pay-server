@@ -1,6 +1,6 @@
 package org.rooftop.pay.domain
 
 data class PointRollbackEvent(
-    val id: Long,
+    val userId: Long,
     val paidPoint: Long,
 )
