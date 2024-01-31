@@ -50,7 +50,7 @@ class PointService(
     @Transactional
     @EventListener(PointRollbackEvent::class)
     fun rollbackPoint(pointRollbackEvent: PointRollbackEvent): Mono<Point> {
-        return pointRepository.findById(pointRollbackEvent.id)
+        return pointRepository.findByUserId(pointRollbackEvent.userId)
             .flatMap {
                 it.charge(pointRollbackEvent.paidPoint)
                 pointRepository.save(it)
