@@ -2,9 +2,13 @@ package org.rooftop.pay.domain
 
 import org.rooftop.api.pay.PayRegisterOrderReq
 import org.springframework.context.event.EventListener
+import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
+import reactor.util.retry.RetrySpec
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.toJavaDuration
 
 @Service
 @Transactional(readOnly = true)
@@ -38,6 +42,7 @@ class PayService(
         return paymentRepository.findById(id)
             .map { it.success() }
             .flatMap { paymentRepository.save(it) }
+            .retryWhen(retryOptimisticLockingFailure)
     }
 
     @Transactional
@@ -58,6 +63,7 @@ class PayService(
                     throw IllegalArgumentException("Cannot update pay \"${payRollbackEvent.id}\" to fail")
                 }
             )
+            .retryWhen(retryOptimisticLockingFailure)
             .map { }
     }
 
@@ -68,5 +74,14 @@ class PayService(
                     throw IllegalArgumentException("Cannot find exists payment by order-id \"$orderId\"")
                 }
             )
+    }
+
+    private companion object {
+        private const val RETRY_MOST_100_PERCENT = 1.0
+
+        private val retryOptimisticLockingFailure =
+            RetrySpec.fixedDelay(Long.MAX_VALUE, 50.milliseconds.toJavaDuration())
+                .jitter(RETRY_MOST_100_PERCENT)
+                .filter { it is OptimisticLockingFailureException }
     }
 }
