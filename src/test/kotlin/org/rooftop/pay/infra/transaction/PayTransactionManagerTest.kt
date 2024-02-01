@@ -9,18 +9,18 @@ import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import reactor.test.StepVerifier
 
-@DisplayName("PayTransactionManager 클래스 의")
+@DisplayName("TransactionManager 클래스 의")
 @ContextConfiguration(
     classes = [
         RedisContainer::class,
         ByteArrayRedisSerializer::class,
         ReactiveRedisConfigurer::class,
-        PayTransactionManager::class,
+        TransactionManager::class,
     ]
 )
 @TestPropertySource("classpath:application.properties")
 internal class PayTransactionManagerTest(
-    private val transactionManager: PayTransactionManager,
+    private val transactionManager: TransactionManager,
 ) : DescribeSpec({
 
     describe("join 메소드는") {
@@ -100,6 +100,7 @@ internal class PayTransactionManagerTest(
 }) {
 
     companion object {
-        private val undoPayment = UndoPayment(payment().id)
+        private val payment = payment()
+        private val undoPayment = UndoPayment(payment.id, payment.userId, payment.price)
     }
 }
