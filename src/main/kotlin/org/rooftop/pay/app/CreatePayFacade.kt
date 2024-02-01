@@ -23,8 +23,9 @@ class CreatePayFacade(
 
     private fun Mono<Payment>.joinTransaction(transactionId: String): Mono<Payment> {
         return this.flatMap { payment ->
-            transactionManager.join(transactionId, UndoPayment(payment.id))
-                .map { payment }
+            transactionManager.join(
+                transactionId, UndoPayment(payment.id, payment.userId, payment.price)
+            ).map { payment }
         }
     }
 }

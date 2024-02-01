@@ -1,8 +1,7 @@
 package org.rooftop.pay.app
 
-import com.fasterxml.jackson.annotation.JsonCreator
-
-data class UndoPayment @JsonCreator constructor(
+data class UndoPayment(
     val id: Long,
-) {
-}
+    val userId: Long,
+    val paidPoint: Long,
+)

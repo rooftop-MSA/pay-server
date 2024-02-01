@@ -3,7 +3,6 @@ package org.rooftop.pay.infra.transaction
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule
 import org.rooftop.pay.app.UndoPayment
-import org.rooftop.pay.app.UndoPoint
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -46,7 +45,7 @@ class ReactiveRedisConfigurer(
     }
 
     @Bean
-    fun payUndoServer(): ReactiveRedisTemplate<String, UndoPayment> {
+    fun undoServer(): ReactiveRedisTemplate<String, UndoPayment> {
         val builder = RedisSerializationContext.newSerializationContext<String, UndoPayment>(
             StringRedisSerializer()
         )
@@ -56,24 +55,6 @@ class ReactiveRedisConfigurer(
         }
         val undoPayJacksonSerializer =
             Jackson2JsonRedisSerializer(objectMapper, UndoPayment::class.java)
-
-        val context = builder.value(undoPayJacksonSerializer)
-            .build()
-
-        return ReactiveRedisTemplate(undoServerConnectionFactory(), context)
-    }
-
-    @Bean
-    fun pointUndoServer(): ReactiveRedisTemplate<String, UndoPoint> {
-        val builder = RedisSerializationContext.newSerializationContext<String, UndoPoint>(
-            StringRedisSerializer()
-        )
-
-        val objectMapper = ObjectMapper().apply {
-            this.registerModule(ParameterNamesModule())
-        }
-        val undoPayJacksonSerializer =
-            Jackson2JsonRedisSerializer(objectMapper, UndoPoint::class.java)
 
         val context = builder.value(undoPayJacksonSerializer)
             .build()

@@ -48,11 +48,11 @@ class PointService(
     }
 
     @Transactional
-    @EventListener(PointRollbackEvent::class)
-    fun rollbackPoint(pointRollbackEvent: PointRollbackEvent): Mono<Point> {
-        return pointRepository.findByUserId(pointRollbackEvent.userId)
+    @EventListener(PayRollbackEvent::class)
+    fun rollbackPoint(payRollbackEvent: PayRollbackEvent): Mono<Point> {
+        return pointRepository.findByUserId(payRollbackEvent.userId)
             .flatMap {
-                it.charge(pointRollbackEvent.paidPoint)
+                it.charge(payRollbackEvent.paidPoint)
                 pointRepository.save(it)
             }
             .retryWhen(retryOptimisticLockingFailure)

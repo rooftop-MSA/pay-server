@@ -18,14 +18,14 @@ import kotlin.time.Duration.Companion.seconds
         RedisContainer::class,
         ByteArrayRedisSerializer::class,
         ReactiveRedisConfigurer::class,
-        PayTransactionManager::class,
-        PayTransactionListener::class,
+        TransactionManager::class,
+        TransactionListener::class,
     ]
 )
 @TestPropertySource("classpath:application.properties")
 internal class PayTransactionListenerTest(
     private val eventCapture: EventCapture,
-    private val transactionPublisher: PayTransactionManager,
+    private val transactionPublisher: TransactionManager,
 ) : DescribeSpec({
 
     afterEach { eventCapture.clear() }
@@ -66,6 +66,7 @@ internal class PayTransactionListenerTest(
 
 }) {
     private companion object {
-        private val undoPayment = UndoPayment(payment().id)
+        private val payment = payment()
+        private val undoPayment = UndoPayment(payment.id, payment.userId, payment.price)
     }
 }

@@ -11,16 +11,15 @@ import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.stream.StreamOffset
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.data.redis.stream.StreamReceiver
-import org.springframework.data.redis.stream.StreamReceiver.StreamReceiverOptions
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.scheduler.Schedulers
 
 @Component
-class PayTransactionListener(
+class TransactionListener(
     private val eventPublisher: ApplicationEventPublisher,
     @Qualifier("transactionServerConnectionFactory") private val connectionFactory: ReactiveRedisConnectionFactory,
-    @Qualifier("payUndoServer") private val payUndoServer: ReactiveRedisTemplate<String, UndoPayment>,
+    private val undoServer: ReactiveRedisTemplate<String, UndoPayment>,
 ) {
 
     private val options = StreamReceiver.StreamReceiverOptions.builder()
@@ -29,10 +28,10 @@ class PayTransactionListener(
 
     private val receiver = StreamReceiver.create(connectionFactory, options)
 
-    @EventListener(PayTransactionJoinedEvent::class)
-    fun subscribeStream(payTransactionJoinedEvent: PayTransactionJoinedEvent): Flux<Transaction> {
-        return receiver.receive(StreamOffset.fromStart(payTransactionJoinedEvent.transactionId))
-            .subscribeOn(Schedulers.boundedElastic())
+    @EventListener(TransactionJoinedEvent::class)
+    fun subscribeStream(transactionJoinedEvent: TransactionJoinedEvent): Flux<Transaction> {
+        return receiver.receive(StreamOffset.fromStart(transactionJoinedEvent.transactionId))
+            .publishOn(Schedulers.parallel())
             .map { Transaction.parseFrom(it.value["data"]?.toByteArray()) }
             .dispatch()
     }
@@ -40,11 +39,19 @@ class PayTransactionListener(
     private fun Flux<Transaction>.dispatch(): Flux<Transaction> {
         return this.filter { it.state == TransactionState.TRANSACTION_STATE_ROLLBACK }
             .flatMap { transaction ->
-                payUndoServer.opsForValue()["PAY:${transaction.id}"]
-                    .doOnNext { eventPublisher.publishEvent(PayRollbackEvent(it.id)) }
+                undoServer.opsForValue()["PAY:${transaction.id}"]
+                    .doOnNext {
+                        eventPublisher.publishEvent(
+                            PayRollbackEvent(
+                                it.id,
+                                it.userId,
+                                it.paidPoint
+                            )
+                        )
+                    }
                     .map { transaction }
                     .flatMap {
-                        payUndoServer.opsForValue().delete("PAY:${transaction.id}")
+                        undoServer.opsForValue().delete("PAY:${transaction.id}")
                             .map { transaction }
                             .retry()
                     }

@@ -8,7 +8,6 @@ import kotlin.reflect.KClass
 class EventCapture {
 
     private val eventCapture: MutableMap<KClass<out Any>, Long> = mutableMapOf()
-    private lateinit var behavior: (Any) -> Unit
 
     fun clear() {
         eventCapture.clear()

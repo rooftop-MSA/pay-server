@@ -1,6 +1,6 @@
 package org.rooftop.pay.infra.transaction
 
-import org.rooftop.pay.app.UndoPoint
+import org.rooftop.pay.app.UndoPayment
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
@@ -9,16 +9,16 @@ import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
 
 @Component
-class PointTransactionManager(
+class TransactionManager(
     private val eventPublisher: ApplicationEventPublisher,
     @Value("\${distributed.transaction.server.id}") private val transactionServerId: String,
     @Qualifier("transactionServer") private val transactionServer: ReactiveRedisTemplate<String, ByteArray>,
-    @Qualifier("pointUndoServer") private val pointUndoServer: ReactiveRedisTemplate<String, UndoPoint>,
-) : AbstractTransactionManager<UndoPoint>(transactionServerId, transactionServer) {
+    private val undoServer: ReactiveRedisTemplate<String, UndoPayment>,
+) : AbstractTransactionManager<UndoPayment>(transactionServerId, transactionServer) {
 
-    override fun Mono<String>.undoBeforeState(state: UndoPoint): Mono<String> {
+    override fun Mono<String>.undoBeforeState(state: UndoPayment): Mono<String> {
         return this.flatMap { transactionId ->
-            pointUndoServer.opsForValue().set("POINT:$transactionId", state)
+            undoServer.opsForValue().set("PAY:$transactionId", state)
                 .flatMap {
                     when (it) {
                         true -> Mono.just(it)
@@ -33,7 +33,7 @@ class PointTransactionManager(
 
     override fun Mono<String>.publishJoinedEvent(): Mono<String> {
         return this.doOnSuccess {
-            eventPublisher.publishEvent(PointTransactionJoinedEvent(it))
+            eventPublisher.publishEvent(TransactionJoinedEvent(it))
         }
     }
 }
