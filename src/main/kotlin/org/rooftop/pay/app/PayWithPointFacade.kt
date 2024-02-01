@@ -32,6 +32,7 @@ class PayWithPointFacade(
             .payWithPoint()
             .successPay()
             .commitOnSuccess()
+            .publishOn(Schedulers.parallel())
             .confirmOrder(payPointReq)
             .contextWrite { it.put("transactionId", transactionIdGenerator.generate()) }
             .map { }
