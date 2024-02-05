@@ -5,11 +5,10 @@ import io.kotest.core.spec.style.DescribeSpec
 import org.rooftop.api.identity.userGetByTokenRes
 import org.rooftop.api.pay.payPointReq
 import org.rooftop.api.pay.payRegisterOrderReq
+import org.rooftop.netx.redis.AutoConfigureRedisTransaction
 import org.rooftop.pay.Application
 import org.rooftop.pay.domain.PayService
-import org.rooftop.pay.domain.PointRepository
 import org.rooftop.pay.domain.R2dbcConfigurer
-import org.rooftop.pay.infra.transaction.RedisContainer
 import org.rooftop.pay.server.MockIdentityServer
 import org.rooftop.pay.server.MockOrderServer
 import org.springframework.boot.test.context.SpringBootTest
@@ -18,13 +17,14 @@ import reactor.test.StepVerifier
 
 @SpringBootTest
 @DisplayName("PayWithPointFacade 클래스의")
+@AutoConfigureRedisTransaction
 @ContextConfiguration(
     classes = [
         Application::class,
         R2dbcConfigurer::class,
-        RedisContainer::class,
         MockIdentityServer::class,
         MockOrderServer::class,
+        RedisContainer::class,
     ]
 )
 internal class PayWithPointFacadeTest(
@@ -32,7 +32,6 @@ internal class PayWithPointFacadeTest(
     private val mockOrderServer: MockOrderServer,
     private val mockIdentityServer: MockIdentityServer,
     private val payService: PayService,
-    private val pointRepository: PointRepository,
 ) : DescribeSpec({
 
     describe("payWithPoint 메소드는") {

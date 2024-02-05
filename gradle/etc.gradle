@@ -1,3 +1,4 @@
 dependencies {
+    implementation 'com.github.rooftop-msa:netx:6ad7ac5f97'
     implementation "com.github.f4b6a3:tsid-creator:${snowflakeVersion}"
 }
