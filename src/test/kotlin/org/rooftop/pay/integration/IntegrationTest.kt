@@ -5,13 +5,11 @@ import io.kotest.core.spec.style.DescribeSpec
 import org.rooftop.api.identity.userGetByTokenRes
 import org.rooftop.api.pay.payPointReq
 import org.rooftop.api.pay.payRegisterOrderReq
-import org.rooftop.api.transaction.TransactionState
-import org.rooftop.api.transaction.transaction
+import org.rooftop.netx.api.TransactionManager
+import org.rooftop.netx.redis.AutoConfigureRedisTransaction
 import org.rooftop.pay.Application
-import org.rooftop.pay.app.PayWithPointFacadeTest
-import org.rooftop.pay.app.RedisAssertions
+import org.rooftop.pay.app.RedisContainer
 import org.rooftop.pay.domain.R2dbcConfigurer
-import org.rooftop.pay.infra.transaction.RedisContainer
 import org.rooftop.pay.server.MockIdentityServer
 import org.rooftop.pay.server.MockOrderServer
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
@@ -21,24 +19,24 @@ import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.web.reactive.server.WebTestClient
 
 @AutoConfigureWebTestClient
+@AutoConfigureRedisTransaction
 @DisplayName("통합테스트의")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(
     classes = [
         Application::class,
-        RedisContainer::class,
-        RedisAssertions::class,
         R2dbcConfigurer::class,
         MockIdentityServer::class,
         MockOrderServer::class,
+        RedisContainer::class,
     ]
 )
 internal class IntegrationTest(
     private val api: WebTestClient,
-    private val redisAssertions: RedisAssertions,
     private val r2dbcEntityTemplate: R2dbcEntityTemplate,
     private val mockIdentityServer: MockIdentityServer,
     private val mockOrderServer: MockOrderServer,
+    private val transactionManager: TransactionManager,
 ) : DescribeSpec({
 
     afterEach {
@@ -46,16 +44,37 @@ internal class IntegrationTest(
     }
 
     describe("createPay api는") {
-        context("등록할 주문 정보와 transaction id를 전달받으면, ") {
+        context("등록할 주문 정보와 transaction id를 전달받으면,") {
+            val transactionId = transactionManager.start("").block()!!
+
+            val payRegisterOrderReq = payRegisterOrderReq {
+                this.orderId = 1L
+                this.userId = USER_ID
+                this.price = 1_000L
+                this.transactionId = transactionId
+            }
+
             it("결제를 대기상태로 생성한다.") {
                 val result = api.createPay(payRegisterOrderReq)
 
                 result.expectStatus().isOk
-                redisAssertions.assertUndoPaymentExist(payRegisterOrderReq.transactionId)
-                redisAssertions.assertTransactionServer(
-                    payRegisterOrderReq.transactionId,
-                    joinTransaction
-                )
+            }
+        }
+
+        context("존재하지 않는 transactionId를 전달받으면,") {
+            val unknownTransactionId = "UNKNOWN_TRANSACTION_ID"
+
+            val payRegisterOrderReq = payRegisterOrderReq {
+                this.orderId = 1L
+                this.userId = USER_ID
+                this.price = 1_000L
+                this.transactionId = unknownTransactionId
+            }
+
+            it("결제 생성에 실패하고 500 Internal Server Error 를 반환한다.") {
+                val result = api.createPay(payRegisterOrderReq)
+
+                result.expectStatus().is5xxServerError
             }
         }
     }
@@ -65,6 +84,14 @@ internal class IntegrationTest(
 
             mockOrderServer.enqueue200()
             mockIdentityServer.enqueue200(userGetByTokenRes)
+
+            val transactionId = transactionManager.start("").block()!!
+            val payRegisterOrderReq = payRegisterOrderReq {
+                this.orderId = ORDER_ID
+                this.userId = USER_ID
+                this.price = 1_000L
+                this.transactionId = transactionId
+            }
             api.createPay(payRegisterOrderReq)
 
             it("결제에 성공한다.") {
@@ -80,27 +107,15 @@ internal class IntegrationTest(
         private const val VALID_TOKEN = "VALID_TOKEN"
         private const val USER_ID = 2L
         private const val USER_NAME = "USER_NAME"
+        private const val ORDER_ID = 3L
 
         private val userGetByTokenRes = userGetByTokenRes {
             this.id = USER_ID
             this.name = USER_NAME
         }
 
-        private val payRegisterOrderReq = payRegisterOrderReq {
-            this.orderId = 1L
-            this.userId = USER_ID
-            this.price = 1_000L
-            this.transactionId = "4971626623122412"
-        }
-
-        private val joinTransaction = transaction {
-            this.id = payRegisterOrderReq.transactionId
-            this.serverId = "pay-1"
-            this.state = TransactionState.TRANSACTION_STATE_JOIN
-        }
-
         private val payPointReq = payPointReq {
-            this.orderId = payRegisterOrderReq.orderId
+            this.orderId = ORDER_ID
         }
     }
 }

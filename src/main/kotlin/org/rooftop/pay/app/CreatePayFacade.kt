@@ -1,31 +1,38 @@
 package org.rooftop.pay.app
 
 import org.rooftop.api.pay.PayRegisterOrderReq
+import org.rooftop.netx.api.TransactionManager
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.Payment
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 
 @Service
 class CreatePayFacade(
     private val payService: PayService,
-    private val transactionManager: TransactionManager<UndoPayment>,
+    private val transactionManager: TransactionManager,
 ) {
 
     fun createPayment(payRegisterOrderReq: PayRegisterOrderReq): Mono<Payment> {
-        return payService.createPayment(payRegisterOrderReq)
-            .joinTransaction(payRegisterOrderReq.transactionId)
-            .doOnError {
-                transactionManager.rollback(payRegisterOrderReq.transactionId)
-                throw it
-            }
+        return joinTransaction(
+            payRegisterOrderReq.transactionId,
+            "type=create-payment:orderId=${payRegisterOrderReq.orderId}"
+        ).flatMap {
+            payService.createPayment(payRegisterOrderReq)
+        }.doOnError {
+            transactionManager.rollback(
+                payRegisterOrderReq.transactionId,
+                it.message ?: it::class.simpleName!!
+            ).subscribeOn(Schedulers.parallel()).subscribe()
+            throw it
+        }
     }
 
-    private fun Mono<Payment>.joinTransaction(transactionId: String): Mono<Payment> {
-        return this.flatMap { payment ->
-            transactionManager.join(
-                transactionId, UndoPayment(payment.id, payment.userId, payment.price)
-            ).map { payment }
-        }
+    private fun joinTransaction(
+        transactionId: String,
+        replay: String,
+    ): Mono<String> {
+        return transactionManager.join(transactionId, replay)
     }
 }

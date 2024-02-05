@@ -51,7 +51,7 @@ class PayService(
         return paymentRepository.findById(payRollbackEvent.id)
             .switchIfEmpty(
                 Mono.error {
-                    throw IllegalArgumentException("Cannot find exist pay \"${payRollbackEvent.id}\"")
+                    throw IllegalStateException("Cannot find exist pay \"${payRollbackEvent.id}\"")
                 }
             )
             .map { it.fail() }
@@ -60,9 +60,24 @@ class PayService(
             }
             .switchIfEmpty(
                 Mono.error {
-                    throw IllegalArgumentException("Cannot update pay \"${payRollbackEvent.id}\" to fail")
+                    throw IllegalStateException("Cannot update pay \"${payRollbackEvent.id}\" to fail")
                 }
             )
+            .retryWhen(retryOptimisticLockingFailure)
+            .map { }
+    }
+
+    @Transactional
+    @EventListener(CreatePayRollbackEvent::class)
+    fun rollbackCreatePayment(createPayRollbackEvent: CreatePayRollbackEvent): Mono<Unit> {
+        return paymentRepository.findByOrderId(createPayRollbackEvent.orderId)
+            .switchIfEmpty(
+                Mono.error {
+                    throw IllegalStateException("Cannot find exist pay \"${createPayRollbackEvent.orderId}\"")
+                }
+            )
+            .map { it.fail() }
+            .flatMap { paymentRepository.save(it) }
             .retryWhen(retryOptimisticLockingFailure)
             .map { }
     }

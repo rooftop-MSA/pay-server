@@ -1,14 +1,11 @@
-package org.rooftop.pay.infra.transaction
+package org.rooftop.pay.app
 
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.core.env.ConfigurableEnvironment
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.utility.DockerImageName
 
 @TestConfiguration
-class RedisContainer(
-    private val environment: ConfigurableEnvironment,
-) {
+class RedisContainer {
 
     init {
         val redis: GenericContainer<*> = GenericContainer(DockerImageName.parse("redis:7.2.3"))
@@ -17,11 +14,7 @@ class RedisContainer(
         redis.start()
 
         System.setProperty(
-            "distributed.transaction.port.undo-server",
-            redis.getMappedPort(6379).toString()
-        )
-        System.setProperty(
-            "distributed.transaction.port.transaction-server",
+            "netx.port",
             redis.getMappedPort(6379).toString()
         )
     }

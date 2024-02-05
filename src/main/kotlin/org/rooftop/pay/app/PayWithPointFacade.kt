@@ -4,6 +4,7 @@ import org.rooftop.api.identity.UserGetByTokenRes
 import org.rooftop.api.order.ConfirmState
 import org.rooftop.api.order.orderConfirmReq
 import org.rooftop.api.pay.PayPointReq
+import org.rooftop.netx.api.TransactionManager
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.Payment
 import org.rooftop.pay.domain.PointService
@@ -17,15 +18,13 @@ import reactor.core.scheduler.Schedulers
 class PayWithPointFacade(
     private val payService: PayService,
     private val pointService: PointService,
-    private val transactionIdGenerator: TransactionIdGenerator,
-    private val transactionManager: TransactionManager<UndoPayment>,
+    private val transactionManager: TransactionManager,
     private val orderWebClient: WebClient,
     private val identityWebClient: WebClient,
 ) {
 
     fun payWithPoint(token: String, payPointReq: PayPointReq): Mono<Unit> {
-        return Mono.deferContextual<String> { Mono.just(it["transactionId"]) }
-            .existsUser(token)
+        return existsUser(token)
             .getPaymentByOrderId(payPointReq)
             .registerPointIfNewUser()
             .startTransaction()
@@ -34,22 +33,19 @@ class PayWithPointFacade(
             .commitOnSuccess()
             .publishOn(Schedulers.parallel())
             .confirmOrder(payPointReq)
-            .contextWrite { it.put("transactionId", transactionIdGenerator.generate()) }
             .map { }
     }
 
-    private fun Mono<String>.existsUser(token: String): Mono<UserGetByTokenRes> {
-        return this.flatMap {
-            identityWebClient.get()
-                .uri("/v1/users/tokens")
-                .header(HttpHeaders.AUTHORIZATION, token)
-                .exchangeToMono {
-                    if (it.statusCode().is2xxSuccessful) {
-                        return@exchangeToMono it.bodyToMono(UserGetByTokenRes::class.java)
-                    }
-                    it.createError()
+    private fun existsUser(token: String): Mono<UserGetByTokenRes> {
+        return identityWebClient.get()
+            .uri("/v1/users/tokens")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .exchangeToMono {
+                if (it.statusCode().is2xxSuccessful) {
+                    return@exchangeToMono it.bodyToMono(UserGetByTokenRes::class.java)
                 }
-        }
+                it.createError()
+            }
     }
 
     private fun Mono<UserGetByTokenRes>.getPaymentByOrderId(payPointReq: PayPointReq): Mono<Payment> {
@@ -74,34 +70,29 @@ class PayWithPointFacade(
         }
     }
 
-    private fun Mono<Payment>.startTransaction(): Mono<Payment> {
-        return this.withTransactionId()
-            .flatMap { (transactionId, payment) ->
-                transactionManager.join(
-                    transactionId,
-                    UndoPayment(payment.id, payment.userId, payment.price)
-                ).map {
-                    payment
-                }.rollbackOnError(transactionId)
-            }
+    private fun Mono<Payment>.startTransaction(): Mono<Pair<String, Payment>> {
+        return this.flatMap { payment ->
+            transactionManager.start("type=pay-point:id=${payment.id}:userId=${payment.userId}:paidPoint=${payment.price}")
+                .map {
+                    it to payment
+                }
+        }
     }
 
-    private fun Mono<Payment>.payWithPoint(): Mono<Payment> {
-        return this.withTransactionId()
-            .flatMap { (transactionId, payment) ->
-                pointService.payWithPoint(payment.userId, payment.price)
-                    .map { payment }
-                    .rollbackOnError(transactionId)
-            }
+    private fun Mono<Pair<String, Payment>>.payWithPoint(): Mono<Pair<String, Payment>> {
+        return this.flatMap { (transactionId, payment) ->
+            pointService.payWithPoint(payment.userId, payment.price)
+                .map { transactionId to payment }
+                .rollbackOnError(transactionId)
+        }
     }
 
-    private fun Mono<Payment>.successPay(): Mono<String> {
-        return this.withTransactionId()
-            .flatMap { (transactionId, payment) ->
-                payService.successPayment(payment.id)
-                    .map { transactionId }
-                    .rollbackOnError(transactionId)
-            }
+    private fun Mono<Pair<String, Payment>>.successPay(): Mono<String> {
+        return this.flatMap { (transactionId, payment) ->
+            payService.successPayment(payment.id)
+                .map { transactionId }
+                .rollbackOnError(transactionId)
+        }
     }
 
     private fun Mono<String>.confirmOrder(payPointReq: PayPointReq): Mono<String> {
@@ -132,17 +123,10 @@ class PayWithPointFacade(
 
     private fun <T> Mono<T>.rollbackOnError(transactionId: String): Mono<T> {
         return this.doOnError {
-            transactionManager.rollback(transactionId)
+            transactionManager.rollback(transactionId, it.message ?: it::class.simpleName!!)
                 .subscribeOn(Schedulers.parallel())
                 .subscribe()
             throw it
-        }
-    }
-
-    private fun <T> Mono<T>.withTransactionId(): Mono<Pair<String, T>> {
-        return this.flatMap { cascadeArgument ->
-            Mono.deferContextual<String> { Mono.just(it["transactionId"]) }
-                .map { it to cascadeArgument }
         }
     }
 }
