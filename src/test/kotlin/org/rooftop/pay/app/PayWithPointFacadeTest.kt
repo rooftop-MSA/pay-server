@@ -5,7 +5,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import org.rooftop.api.identity.userGetByTokenRes
 import org.rooftop.api.pay.payPointReq
 import org.rooftop.api.pay.payRegisterOrderReq
-import org.rooftop.netx.redis.AutoConfigureRedisTransaction
+import org.rooftop.netx.autoconfig.AutoConfigureDistributedTransaction
 import org.rooftop.pay.Application
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.R2dbcConfigurer
@@ -17,7 +17,7 @@ import reactor.test.StepVerifier
 
 @SpringBootTest
 @DisplayName("PayWithPointFacade 클래스의")
-@AutoConfigureRedisTransaction
+@AutoConfigureDistributedTransaction
 @ContextConfiguration(
     classes = [
         Application::class,
