@@ -15,7 +15,7 @@ class TransactionEventHandler(
 
     @EventListener(TransactionRollbackEvent::class)
     fun handleTransactionRollbackEvent(transactionRollbackEvent: TransactionRollbackEvent): Mono<Unit> {
-        return Mono.just(transactionRollbackEvent.replay)
+        return Mono.just(transactionRollbackEvent.undoState)
             .map { parseReplay(it) }
             .dispatch()
     }
@@ -24,7 +24,9 @@ class TransactionEventHandler(
         val map = mutableMapOf<String, String>()
         replay.split(":")
             .forEach {
+                println(it)
                 val param = it.split("=")
+                println("${param[0]} ${param[1]}")
                 map[param[0]] = param[1]
             }
         return map
@@ -44,7 +46,7 @@ class TransactionEventHandler(
                     )
                 )
 
-                "create-pay" -> applicationEventPublisher.publishEvent(
+                "create-payment" -> applicationEventPublisher.publishEvent(
                     CreatePayRollbackEvent(
                         it["orderId"]?.toLong()
                             ?: throw IllegalStateException("replay type \"create-payment\" must have \"userId\" field\"")
