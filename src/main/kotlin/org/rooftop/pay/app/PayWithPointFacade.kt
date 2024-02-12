@@ -30,7 +30,6 @@ class PayWithPointFacade(
             .startTransaction()
             .payWithPoint()
             .successPay()
-            .commitOnSuccess()
             .publishOn(Schedulers.parallel())
             .confirmOrder(payPointReq)
             .map { }
@@ -110,14 +109,6 @@ class PayWithPointFacade(
                     }
                     it.createError()
                 }
-        }
-    }
-
-    private fun Mono<String>.commitOnSuccess(): Mono<String> {
-        return this.doOnSuccess { transactionId ->
-            transactionManager.commit(transactionId)
-                .subscribeOn(Schedulers.parallel())
-                .subscribe()
         }
     }
 

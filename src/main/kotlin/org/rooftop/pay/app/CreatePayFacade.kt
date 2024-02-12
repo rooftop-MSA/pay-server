@@ -31,8 +31,8 @@ class CreatePayFacade(
 
     private fun joinTransaction(
         transactionId: String,
-        replay: String,
+        undo: String,
     ): Mono<String> {
-        return transactionManager.join(transactionId, replay)
+        return transactionManager.join(transactionId, undo)
     }
 }
