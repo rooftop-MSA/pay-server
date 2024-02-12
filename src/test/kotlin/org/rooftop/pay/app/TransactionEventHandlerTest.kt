@@ -25,9 +25,9 @@ internal class TransactionEventHandlerTest(
         context("create-payment type의 TransactionRollbackEvent가 들어오면,") {
             val transactionRollbackEvent = TransactionRollbackEvent(
                 transactionId = "1",
-                undoState = "type=create-payment:orderId=1",
+                undo = "type=create-payment:orderId=1",
                 cause = "",
-                nodeName = ""
+                nodeName = "",
             )
 
             it("CreatePayRollbackEvent를 발행한다.") {
