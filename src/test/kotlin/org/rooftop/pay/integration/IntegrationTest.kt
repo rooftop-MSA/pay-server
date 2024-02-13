@@ -6,7 +6,7 @@ import org.rooftop.api.identity.userGetByTokenRes
 import org.rooftop.api.pay.payPointReq
 import org.rooftop.api.pay.payRegisterOrderReq
 import org.rooftop.netx.api.TransactionManager
-import org.rooftop.netx.autoconfig.AutoConfigureDistributedTransaction
+import org.rooftop.netx.autoconfig.EnableDistributedTransaction
 import org.rooftop.pay.Application
 import org.rooftop.pay.app.RedisContainer
 import org.rooftop.pay.domain.R2dbcConfigurer
@@ -19,7 +19,7 @@ import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.web.reactive.server.WebTestClient
 
 @AutoConfigureWebTestClient
-@AutoConfigureDistributedTransaction
+@EnableDistributedTransaction
 @DisplayName("통합테스트의")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(
