@@ -26,6 +26,10 @@ class CreatePayFacade(
                 it.message ?: it::class.simpleName!!
             ).subscribeOn(Schedulers.parallel()).subscribe()
             throw it
+        }.doOnSuccess {
+            transactionManager.commit(payRegisterOrderReq.transactionId)
+                .subscribeOn(Schedulers.parallel())
+                .subscribe()
         }
     }
 
