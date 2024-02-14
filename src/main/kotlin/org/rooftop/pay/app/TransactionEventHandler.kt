@@ -1,10 +1,10 @@
 package org.rooftop.pay.app
 
 import org.rooftop.netx.api.TransactionRollbackEvent
+import org.rooftop.netx.api.TransactionRollbackHandler
 import org.rooftop.pay.domain.CreatePayRollbackEvent
 import org.rooftop.pay.domain.PayRollbackEvent
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 
@@ -13,7 +13,7 @@ class TransactionEventHandler(
     private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
-    @EventListener(TransactionRollbackEvent::class)
+    @TransactionRollbackHandler
     fun handleTransactionRollbackEvent(transactionRollbackEvent: TransactionRollbackEvent): Mono<Unit> {
         return Mono.just(transactionRollbackEvent.undo)
             .map { parseReplay(it) }

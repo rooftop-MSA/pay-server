@@ -27,6 +27,7 @@ internal class TransactionEventHandlerTest(
                 transactionId = "1",
                 undo = "type=create-payment:orderId=1",
                 cause = "",
+                group = "",
                 nodeName = "",
             )
 
