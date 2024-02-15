@@ -2,14 +2,14 @@ package org.rooftop.pay.app
 
 import org.rooftop.netx.api.TransactionRollbackEvent
 import org.rooftop.netx.api.TransactionRollbackHandler
+import org.rooftop.netx.meta.TransactionHandler
 import org.rooftop.pay.domain.CreatePayRollbackEvent
 import org.rooftop.pay.domain.PayRollbackEvent
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 
-@Service
-class TransactionEventHandler(
+@TransactionHandler
+class TransactionHandler(
     private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
 
