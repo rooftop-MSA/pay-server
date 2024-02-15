@@ -10,10 +10,10 @@ import org.springframework.test.context.ContextConfiguration
 import reactor.test.StepVerifier
 import kotlin.time.Duration.Companion.seconds
 
-@ContextConfiguration(classes = [TransactionEventHandler::class, EventCapture::class])
-@DisplayName("TransactionEventHandler 클래스의")
-internal class TransactionEventHandlerTest(
-    private val transactionEventHandler: TransactionEventHandler,
+@ContextConfiguration(classes = [TransactionHandler::class, EventCapture::class])
+@DisplayName("TransactionHandler 클래스의")
+internal class TransactionHandlerTest(
+    private val transactionHandler: TransactionHandler,
     private val eventCapture: EventCapture,
 ) : DescribeSpec({
 
@@ -33,7 +33,7 @@ internal class TransactionEventHandlerTest(
 
             it("CreatePayRollbackEvent를 발행한다.") {
                 val result =
-                    transactionEventHandler.handleTransactionRollbackEvent(transactionRollbackEvent)
+                    transactionHandler.handleTransactionRollbackEvent(transactionRollbackEvent)
 
                 StepVerifier.create(result)
                     .expectNext(Unit)
