@@ -32,13 +32,12 @@ internal class PayServiceTest(
     describe("rollbackPay 메소드는") {
         context("PayRollbackEvent가 발행되면,") {
             val exist = payService.createPayment(payRegisterOrderReq).block()!!
-            val event = PayRollbackEvent(exist.id, exist.userId, exist.price)
 
             it("저장된 Payment를 Failed 상태로 변경한다.") {
-                applicationEventPublisher.publishEvent(event)
+                payService.rollbackPayment(exist.id).subscribe()
 
                 eventually(10.seconds) {
-                    StepVerifier.create(paymentRepository.findById(event.id))
+                    StepVerifier.create(paymentRepository.findById(exist.id))
                         .assertNext {
                             it.state shouldBeEqual PaymentState.FAILED
                         }
