@@ -3,14 +3,18 @@ package org.rooftop.pay.app
 import org.rooftop.netx.api.TransactionRollbackEvent
 import org.rooftop.netx.api.TransactionRollbackHandler
 import org.rooftop.netx.meta.TransactionHandler
-import org.rooftop.pay.domain.CreatePayRollbackEvent
-import org.rooftop.pay.domain.PayRollbackEvent
-import org.springframework.context.ApplicationEventPublisher
+import org.rooftop.pay.domain.PayService
+import org.rooftop.pay.domain.PointService
+import org.springframework.dao.OptimisticLockingFailureException
 import reactor.core.publisher.Mono
+import reactor.util.retry.RetrySpec
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.toJavaDuration
 
 @TransactionHandler
 class TransactionHandler(
-    private val applicationEventPublisher: ApplicationEventPublisher,
+    private val payService: PayService,
+    private val pointService: PointService,
 ) {
 
     @TransactionRollbackHandler
@@ -33,26 +37,43 @@ class TransactionHandler(
     }
 
     private fun Mono<Map<String, String>>.dispatch(): Mono<Unit> {
-        return this.doOnNext {
+        return this.flatMap {
             when (it["type"]) {
-                "pay-point" -> applicationEventPublisher.publishEvent(
-                    PayRollbackEvent(
-                        it["id"]?.toLong()
-                            ?: throw IllegalStateException("replay type \"pay-point\" must have \"id\" field"),
-                        it["userId"]?.toLong()
-                            ?: throw IllegalStateException("replay type \"pay-point\" must have \"userId\" field"),
-                        it["paidPoint"]?.toLong()
-                            ?: throw IllegalStateException("replay type \"pay-point\" must have \"paidPoint\" field")
-                    )
-                )
+                "pay-point" -> {
+                    val id = it["id"]?.toLong()
+                        ?: throw IllegalStateException("replay type \"pay-point\" must have \"id\" field")
+                    val userId = it["userId"]?.toLong()
+                        ?: throw IllegalStateException("replay type \"pay-point\" must have \"userId\" field")
+                    val paidPoint = it["paidPoint"]?.toLong()
+                        ?: throw IllegalStateException("replay type \"pay-point\" must have \"paidPoint\" field")
 
-                "create-payment" -> applicationEventPublisher.publishEvent(
-                    CreatePayRollbackEvent(
-                        it["orderId"]?.toLong()
-                            ?: throw IllegalStateException("replay type \"create-payment\" must have \"userId\" field\"")
-                    )
-                )
+                    payService.rollbackPayment(id)
+                        .retryWhen(retryOptimisticLockingFailure)
+                        .flatMap {
+                            pointService.rollbackPoint(userId, paidPoint)
+                                .retryWhen(retryOptimisticLockingFailure)
+                        }
+                }
+
+                "create-payment" -> {
+                    val orderId = it["orderId"]?.toLong()
+                        ?: throw IllegalStateException("replay type \"create-payment\" must have \"userId\" field\"")
+
+                    payService.rollbackCreatePayment(orderId)
+                        .retryWhen(retryOptimisticLockingFailure)
+                }
+
+                else -> error("Cannot find matched type \"${it["type"]}\"")
             }
         }.map { }
+    }
+
+    private companion object {
+        private const val RETRY_MOST_100_PERCENT = 1.0
+
+        private val retryOptimisticLockingFailure =
+            RetrySpec.fixedDelay(Long.MAX_VALUE, 50.milliseconds.toJavaDuration())
+                .jitter(RETRY_MOST_100_PERCENT)
+                .filter { it is OptimisticLockingFailureException }
     }
 }

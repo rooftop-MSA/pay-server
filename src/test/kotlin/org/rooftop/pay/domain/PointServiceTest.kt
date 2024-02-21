@@ -136,7 +136,6 @@ internal class PointServiceTest(
 
     describe("rollbackPoint 메소드는") {
         context("RollbackPointEvent 가 발행되면,") {
-            val payId = 10L
             val userId = 20L
             val paidPoint = 500L
 
@@ -145,7 +144,7 @@ internal class PointServiceTest(
             val expected = point(point = 1500L)
 
             it("point 를 롤백한다.") {
-                applicationEventPublisher.publishEvent(PayRollbackEvent(payId, userId, paidPoint))
+                pointService.rollbackPoint(userId, paidPoint).subscribe()
 
                 eventually(10.seconds) {
                     StepVerifier.create(pointRepository.findByUserId(userId))

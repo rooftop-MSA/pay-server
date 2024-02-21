@@ -8,11 +8,15 @@ import org.rooftop.netx.api.TransactionManager
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.Payment
 import org.rooftop.pay.domain.PointService
+import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.http.HttpHeaders
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
+import reactor.util.retry.RetrySpec
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.toJavaDuration
 
 @Service
 class PayWithPointFacade(
@@ -81,6 +85,7 @@ class PayWithPointFacade(
     private fun Mono<Pair<String, Payment>>.payWithPoint(): Mono<Pair<String, Payment>> {
         return this.flatMap { (transactionId, payment) ->
             pointService.payWithPoint(payment.userId, payment.price)
+                .retryWhen(retryOptimisticLockingFailure)
                 .map { transactionId to payment }
                 .rollbackOnError(transactionId)
         }
@@ -89,6 +94,7 @@ class PayWithPointFacade(
     private fun Mono<Pair<String, Payment>>.successPay(): Mono<String> {
         return this.flatMap { (transactionId, payment) ->
             payService.successPayment(payment.id)
+                .retryWhen(retryOptimisticLockingFailure)
                 .map { transactionId }
                 .rollbackOnError(transactionId)
         }
@@ -119,5 +125,14 @@ class PayWithPointFacade(
                 .subscribe()
             throw it
         }
+    }
+
+    private companion object {
+        private const val RETRY_MOST_100_PERCENT = 1.0
+
+        private val retryOptimisticLockingFailure =
+            RetrySpec.fixedDelay(Long.MAX_VALUE, 50.milliseconds.toJavaDuration())
+                .jitter(RETRY_MOST_100_PERCENT)
+                .filter { it is OptimisticLockingFailureException }
     }
 }
