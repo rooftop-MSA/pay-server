@@ -1,10 +1,9 @@
 package org.rooftop.pay.app
 
 import org.rooftop.api.identity.UserGetByTokenRes
-import org.rooftop.api.order.ConfirmState
-import org.rooftop.api.order.orderConfirmReq
 import org.rooftop.api.pay.PayPointReq
 import org.rooftop.netx.api.TransactionManager
+import org.rooftop.order.app.event.PayConfirmEvent
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.Payment
 import org.rooftop.pay.domain.PointService
@@ -23,7 +22,6 @@ class PayWithPointFacade(
     private val payService: PayService,
     private val pointService: PointService,
     private val transactionManager: TransactionManager,
-    private val orderWebClient: WebClient,
     private val identityWebClient: WebClient,
 ) {
 
@@ -34,8 +32,6 @@ class PayWithPointFacade(
             .startTransaction()
             .payWithPoint()
             .successPay()
-            .publishOn(Schedulers.parallel())
-            .confirmOrder(payPointReq)
             .map { }
     }
 
@@ -75,10 +71,15 @@ class PayWithPointFacade(
 
     private fun Mono<Payment>.startTransaction(): Mono<Pair<String, Payment>> {
         return this.flatMap { payment ->
-            transactionManager.start("type=pay-point:id=${payment.id}:userId=${payment.userId}:paidPoint=${payment.price}")
-                .map {
-                    it to payment
-                }
+            transactionManager.start(
+                undo = UndoPayWithPoint(payment.id, payment.userId, payment.price),
+                event = PayConfirmEvent(
+                    payment.id,
+                    payment.orderId,
+                    "success",
+                    payment.price,
+                )
+            ).map { it to payment }
         }
     }
 
@@ -97,24 +98,6 @@ class PayWithPointFacade(
                 .retryWhen(retryOptimisticLockingFailure)
                 .map { transactionId }
                 .rollbackOnError(transactionId)
-        }
-    }
-
-    private fun Mono<String>.confirmOrder(payPointReq: PayPointReq): Mono<String> {
-        return this.flatMap { transactionId ->
-            orderWebClient.post()
-                .uri("/v1/orders/confirms")
-                .header(HttpHeaders.CONTENT_TYPE, "application/x-protobuf")
-                .bodyValue(orderConfirmReq {
-                    this.orderId = payPointReq.orderId
-                    this.confirmState = ConfirmState.CONFIRM_STATE_SUCCESS
-                    this.transactionId = transactionId
-                }).exchangeToMono {
-                    if (it.statusCode().is2xxSuccessful) {
-                        return@exchangeToMono Mono.just(transactionId)
-                    }
-                    it.createError()
-                }
         }
     }
 

@@ -11,7 +11,6 @@ import org.rooftop.pay.Application
 import org.rooftop.pay.app.RedisContainer
 import org.rooftop.pay.domain.R2dbcConfigurer
 import org.rooftop.pay.server.MockIdentityServer
-import org.rooftop.pay.server.MockOrderServer
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate
@@ -27,7 +26,6 @@ import org.springframework.test.web.reactive.server.WebTestClient
         Application::class,
         R2dbcConfigurer::class,
         MockIdentityServer::class,
-        MockOrderServer::class,
         RedisContainer::class,
     ]
 )
@@ -35,7 +33,6 @@ internal class IntegrationTest(
     private val api: WebTestClient,
     private val r2dbcEntityTemplate: R2dbcEntityTemplate,
     private val mockIdentityServer: MockIdentityServer,
-    private val mockOrderServer: MockOrderServer,
     private val transactionManager: TransactionManager,
 ) : DescribeSpec({
 
@@ -82,7 +79,6 @@ internal class IntegrationTest(
     describe("payPoint api 는") {
         context("포인트가 충분한 유저가 결제를 요청할 경우,") {
 
-            mockOrderServer.enqueue200()
             mockIdentityServer.enqueue200(userGetByTokenRes)
 
             val transactionId = transactionManager.start("").block()!!

@@ -1,6 +1,5 @@
 package org.rooftop.pay.domain
 
-import org.rooftop.api.pay.PayRegisterOrderReq
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
@@ -13,23 +12,22 @@ class PayService(
 ) {
 
     @Transactional
-    fun createPayment(payRegisterOrderReq: PayRegisterOrderReq): Mono<Payment> {
-        return Mono.just(payRegisterOrderReq)
-            .map {
-                Payment(
-                    id = idGenerator.generate(),
-                    userId = payRegisterOrderReq.userId,
-                    orderId = payRegisterOrderReq.orderId,
-                    price = payRegisterOrderReq.price,
-                    isNew = true
-                )
-            }
-            .flatMap { paymentRepository.save(it) }
-            .switchIfEmpty(
-                Mono.error {
-                    throw IllegalArgumentException("Cannot register order \"$payRegisterOrderReq\"")
-                }
+    fun createPayment(userId: Long, orderId: Long, totalPrice: Long): Mono<Payment> {
+        return Mono.just(
+            Payment(
+                id = idGenerator.generate(),
+                userId = userId,
+                orderId = orderId,
+                price = totalPrice,
+                isNew = true
             )
+        ).flatMap {
+            paymentRepository.save(it)
+        }.switchIfEmpty(
+            Mono.error {
+                throw IllegalArgumentException("Cannot register order \"$orderId\"")
+            }
+        )
     }
 
     @Transactional
