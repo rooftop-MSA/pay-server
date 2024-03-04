@@ -4,13 +4,11 @@ import io.kotest.core.annotation.DisplayName
 import io.kotest.core.spec.style.DescribeSpec
 import org.rooftop.api.identity.userGetByTokenRes
 import org.rooftop.api.pay.payPointReq
-import org.rooftop.api.pay.payRegisterOrderReq
 import org.rooftop.netx.meta.EnableDistributedTransaction
 import org.rooftop.pay.Application
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.R2dbcConfigurer
 import org.rooftop.pay.server.MockIdentityServer
-import org.rooftop.pay.server.MockOrderServer
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ContextConfiguration
 import reactor.test.StepVerifier
@@ -23,13 +21,11 @@ import reactor.test.StepVerifier
         Application::class,
         R2dbcConfigurer::class,
         MockIdentityServer::class,
-        MockOrderServer::class,
         RedisContainer::class,
     ]
 )
 internal class PayWithPointFacadeTest(
     private val payWithPointFacade: PayWithPointFacade,
-    private val mockOrderServer: MockOrderServer,
     private val mockIdentityServer: MockIdentityServer,
     private val payService: PayService,
 ) : DescribeSpec({
@@ -37,9 +33,8 @@ internal class PayWithPointFacadeTest(
     describe("payWithPoint 메소드는") {
         context("일치하는 유저의 payPointReq 를 받으면,") {
 
-            mockOrderServer.enqueue200()
             mockIdentityServer.enqueue200(userGetByTokenRes)
-            payService.createPayment(price1000OrderReq).block()
+            payService.createPayment(USER_ID, 2L, 1_000L).block()
 
             it("결제에 성공한다.") {
                 val result = payWithPointFacade.payWithPoint(VALID_TOKEN, price1000PointReq)
@@ -69,7 +64,7 @@ internal class PayWithPointFacadeTest(
         context("유저가 갖고있는 포인트보다 주문의 가격이 더 비싸면,") {
 
             mockIdentityServer.enqueue200(userGetByTokenRes)
-            payService.createPayment(price10000OrderReq).block()
+            payService.createPayment(USER_ID, 3L, 10_000L).block()
 
             it("구매에 실패하고 예외를 던진다.") {
                 val result = payWithPointFacade.payWithPoint(VALID_TOKEN, price10000PointReq)
@@ -81,19 +76,9 @@ internal class PayWithPointFacadeTest(
 
         context("결제정보가 PENDING이 아니라면,") {
 
-            val userGetByTokenRes = userGetByTokenRes {
-                this.id = 3L
-            }
+            val userGetByTokenRes = userGetByTokenRes { this.id = 3L }
             mockIdentityServer.enqueue200(userGetByTokenRes, userGetByTokenRes)
-            mockOrderServer.enqueue200()
-
-            val payRegisterOrderReq = payRegisterOrderReq {
-                this.userId = 3L
-                this.price = 500
-                this.orderId = 10L
-                this.transactionId = "10"
-            }
-            payService.createPayment(payRegisterOrderReq).block()
+            payService.createPayment(3L, 10L, 500L).block()
 
             val payPointReq = payPointReq {
                 this.orderId = 10L
@@ -125,22 +110,8 @@ internal class PayWithPointFacadeTest(
             this.orderId = 2L
         }
 
-        private val price1000OrderReq = payRegisterOrderReq {
-            this.userId = USER_ID
-            this.orderId = 2L
-            this.price = 1_000
-            this.transactionId = "1"
-        }
-
         private val price10000PointReq = payPointReq {
             this.orderId = 3L
-        }
-
-        private val price10000OrderReq = payRegisterOrderReq {
-            this.userId = USER_ID
-            this.orderId = 3L
-            this.price = 10_000
-            this.transactionId = "2"
         }
     }
 }
