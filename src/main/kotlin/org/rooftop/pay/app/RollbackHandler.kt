@@ -18,7 +18,10 @@ class RollbackHandler(
     private val pointService: PointService,
 ) {
 
-    @TransactionRollbackListener(noRetryFor = [IllegalStateException::class])
+    @TransactionRollbackListener(
+        event = PayRollbackEvent::class,
+        noRetryFor = [IllegalStateException::class]
+    )
     fun handleTransactionRollbackEvent(transactionRollbackEvent: TransactionRollbackEvent): Mono<Point> {
         return Mono.just(transactionRollbackEvent.decodeUndo(UndoPayWithPoint::class))
             .flatMap { undoPayWithPoint ->

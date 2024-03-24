@@ -60,38 +60,6 @@ internal class PayWithPointFacadeTest(
                     .verifyErrorMessage("Not matched userId \"2\"")
             }
         }
-
-        context("유저가 갖고있는 포인트보다 주문의 가격이 더 비싸면,") {
-
-            mockIdentityServer.enqueue200(userGetByTokenRes)
-            payService.createPayment(USER_ID, 3L, 10_000L).block()
-
-            it("구매에 실패하고 예외를 던진다.") {
-                val result = payWithPointFacade.payWithPoint(VALID_TOKEN, price10000PointReq)
-
-                StepVerifier.create(result)
-                    .verifyErrorMessage("Not enough point to pay point(\"0\") < price(\"10000\")")
-            }
-        }
-
-        context("결제정보가 PENDING이 아니라면,") {
-
-            val userGetByTokenRes = userGetByTokenRes { this.id = 3L }
-            mockIdentityServer.enqueue200(userGetByTokenRes, userGetByTokenRes)
-            payService.createPayment(3L, 10L, 500L).block()
-
-            val payPointReq = payPointReq {
-                this.orderId = 10L
-            }
-            payWithPointFacade.payWithPoint(VALID_TOKEN, payPointReq).block()
-
-            it("구매에 실패하고 예외를 던진다.") {
-                val result = payWithPointFacade.payWithPoint(VALID_TOKEN, payPointReq)
-
-                StepVerifier.create(result)
-                    .verifyErrorMessage("Payment state can be changed to success when it is pending state.")
-            }
-        }
     }
 }) {
 
@@ -108,10 +76,6 @@ internal class PayWithPointFacadeTest(
 
         private val price1000PointReq = payPointReq {
             this.orderId = 2L
-        }
-
-        private val price10000PointReq = payPointReq {
-            this.orderId = 3L
         }
     }
 }

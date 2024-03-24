@@ -1,4 +1,4 @@
-package org.rooftop.order.app.event
+package org.rooftop.pay.app
 
 data class PayConfirmEvent(
     val payId: Long,

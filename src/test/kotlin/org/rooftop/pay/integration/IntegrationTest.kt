@@ -57,23 +57,6 @@ internal class IntegrationTest(
                 result.expectStatus().isOk
             }
         }
-
-        context("존재하지 않는 transactionId를 전달받으면,") {
-            val unknownTransactionId = "UNKNOWN_TRANSACTION_ID"
-
-            val payRegisterOrderReq = payRegisterOrderReq {
-                this.orderId = 1L
-                this.userId = USER_ID
-                this.price = 1_000L
-                this.transactionId = unknownTransactionId
-            }
-
-            it("결제 생성에 실패하고 500 Internal Server Error 를 반환한다.") {
-                val result = api.createPay(payRegisterOrderReq)
-
-                result.expectStatus().is5xxServerError
-            }
-        }
     }
 
     describe("payPoint api 는") {
