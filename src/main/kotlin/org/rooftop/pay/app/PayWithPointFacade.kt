@@ -69,7 +69,7 @@ class PayWithPointFacade(
         }
     }
 
-    private fun Mono<Payment>.startTransaction(): Mono<Pair<String, Payment>> {
+    private fun Mono<Payment>.startTransaction(): Mono<Unit> {
         return this.flatMap { payment ->
             transactionManager.start(
                 undo = UndoPayWithPoint(payment.id, payment.userId, payment.price),
@@ -79,14 +79,11 @@ class PayWithPointFacade(
                     "success",
                     payment.price,
                 )
-            ).map { it to payment }
+            ).map { }
         }
     }
 
-    @TransactionStartListener(
-        event = PayConfirmEvent::class,
-        noRetryFor = [IllegalArgumentException::class]
-    )
+    @TransactionStartListener(event = PayConfirmEvent::class)
     fun payWithPoint(transactionStartEvent: TransactionStartEvent): Mono<Point> {
         return Mono.fromCallable { transactionStartEvent.decodeEvent(PayConfirmEvent::class) }
             .flatMap {
@@ -97,6 +94,12 @@ class PayWithPointFacade(
                 pointService.payWithPoint(it.userId, it.price)
                     .retryWhen(retryOptimisticLockingFailure)
             }.rollbackOnError(transactionStartEvent.transactionId)
+            .onErrorResume {
+                if (it is IllegalArgumentException) {
+                    return@onErrorResume Mono.empty()
+                }
+                throw it
+            }
     }
 
     private fun <T> Mono<T>.rollbackOnError(transactionId: String): Mono<T> {
