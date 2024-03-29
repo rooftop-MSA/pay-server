@@ -2,6 +2,7 @@ package org.rooftop.pay.app
 
 import org.rooftop.api.identity.UserGetByTokenRes
 import org.rooftop.api.pay.PayPointReq
+import org.rooftop.netx.api.SuccessWith
 import org.rooftop.netx.api.TransactionManager
 import org.rooftop.netx.api.TransactionStartEvent
 import org.rooftop.netx.api.TransactionStartListener
@@ -14,7 +15,6 @@ import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.http.HttpHeaders
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
-import reactor.core.scheduler.Schedulers
 import reactor.util.retry.RetrySpec
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toJavaDuration
@@ -72,9 +72,9 @@ class PayWithPointFacade(
     private fun Mono<Payment>.startTransaction(): Mono<Unit> {
         return this.flatMap { payment ->
             transactionManager.start(
-                undo = UndoPayWithPoint(payment.id, payment.userId, payment.price),
                 event = PayConfirmEvent(
                     payment.id,
+                    payment.userId,
                     payment.orderId,
                     "success",
                     payment.price,
@@ -83,7 +83,10 @@ class PayWithPointFacade(
         }
     }
 
-    @TransactionStartListener(event = PayConfirmEvent::class)
+    @TransactionStartListener(
+        event = PayConfirmEvent::class,
+        successWith = SuccessWith.PUBLISH_JOIN,
+    )
     fun payWithPoint(transactionStartEvent: TransactionStartEvent): Mono<Point> {
         return Mono.fromCallable { transactionStartEvent.decodeEvent(PayConfirmEvent::class) }
             .flatMap {
@@ -93,29 +96,36 @@ class PayWithPointFacade(
             .flatMap {
                 pointService.payWithPoint(it.userId, it.price)
                     .retryWhen(retryOptimisticLockingFailure)
-            }.rollbackOnError(transactionStartEvent.transactionId)
+            }
+            .map {
+                val payConfirmEvent = transactionStartEvent.decodeEvent(PayConfirmEvent::class)
+                transactionStartEvent.setNextEvent(payConfirmEvent)
+                it
+            }
             .onErrorResume {
                 if (it is IllegalArgumentException) {
                     return@onErrorResume Mono.empty()
                 }
                 throw it
             }
-    }
-
-    private fun <T> Mono<T>.rollbackOnError(transactionId: String): Mono<T> {
-        return this.doOnError {
-            transactionManager.rollback(transactionId, it.message ?: it::class.simpleName!!)
-                .subscribeOn(Schedulers.parallel())
-                .subscribe()
-            throw it
-        }
+            .doOnError {
+                val payConfirmEvent = transactionStartEvent.decodeEvent(PayConfirmEvent::class)
+                val payRollbackEvent = PayRollbackEvent(
+                    payConfirmEvent.payId,
+                    payConfirmEvent.userId,
+                    payConfirmEvent.orderId,
+                    payConfirmEvent.totalPrice
+                )
+                transactionStartEvent.setNextEvent(payRollbackEvent)
+                throw it
+            }
     }
 
     private companion object {
         private const val RETRY_MOST_100_PERCENT = 1.0
 
         private val retryOptimisticLockingFailure =
-            RetrySpec.fixedDelay(Long.MAX_VALUE, 500.milliseconds.toJavaDuration())
+            RetrySpec.fixedDelay(Long.MAX_VALUE, 1000.milliseconds.toJavaDuration())
                 .jitter(RETRY_MOST_100_PERCENT)
                 .filter { it is OptimisticLockingFailureException }
     }

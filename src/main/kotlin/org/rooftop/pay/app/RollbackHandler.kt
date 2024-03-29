@@ -20,14 +20,14 @@ class RollbackHandler(
 
     @TransactionRollbackListener(event = PayRollbackEvent::class)
     fun handleTransactionRollbackEvent(transactionRollbackEvent: TransactionRollbackEvent): Mono<Point> {
-        return Mono.just(transactionRollbackEvent.decodeUndo(UndoPayWithPoint::class))
-            .flatMap { undoPayWithPoint ->
-                payService.rollbackPayment(undoPayWithPoint.id)
+        return Mono.just(transactionRollbackEvent.decodeEvent(PayRollbackEvent::class))
+            .flatMap { payRollbackEvent ->
+                payService.rollbackPayment(payRollbackEvent.payId)
                     .retryWhen(retryOptimisticLockingFailure)
                     .flatMap {
                         pointService.rollbackPoint(
-                            undoPayWithPoint.userId,
-                            undoPayWithPoint.paidPoint
+                            payRollbackEvent.userId,
+                            payRollbackEvent.paidPoint
                         ).retryWhen(retryOptimisticLockingFailure)
                             .onErrorResume {
                                 if (it is IllegalStateException) {
@@ -43,7 +43,7 @@ class RollbackHandler(
         private const val RETRY_MOST_100_PERCENT = 1.0
 
         private val retryOptimisticLockingFailure =
-            RetrySpec.fixedDelay(Long.MAX_VALUE, 50.milliseconds.toJavaDuration())
+            RetrySpec.fixedDelay(Long.MAX_VALUE, 1000.milliseconds.toJavaDuration())
                 .jitter(RETRY_MOST_100_PERCENT)
                 .filter { it is OptimisticLockingFailureException }
     }
