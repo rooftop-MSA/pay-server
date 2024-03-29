@@ -13,6 +13,7 @@ import org.rooftop.pay.domain.Point
 import org.rooftop.pay.domain.PointService
 import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.http.HttpHeaders
+import org.springframework.transaction.CannotCreateTransactionException
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 import reactor.util.retry.RetrySpec
@@ -127,6 +128,8 @@ class PayWithPointFacade(
         private val retryOptimisticLockingFailure =
             RetrySpec.fixedDelay(Long.MAX_VALUE, 1000.milliseconds.toJavaDuration())
                 .jitter(RETRY_MOST_100_PERCENT)
-                .filter { it is OptimisticLockingFailureException }
+                .filter {
+                    it is OptimisticLockingFailureException || it is CannotCreateTransactionException
+                }
     }
 }
