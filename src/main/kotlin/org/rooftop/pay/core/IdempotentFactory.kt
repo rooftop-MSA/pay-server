@@ -19,7 +19,7 @@ class IdempotentFactory(
                     Mono.fromCallable {
                         context.decodeContext(IDEMPOTENT_KEY, String::class)
                     }.flatMap { idempotentValue ->
-                        idempotentCache.setInProgress(idempotentValue)
+                        idempotentCache.cache(idempotentValue)
                             .map {
                                 require(it) {
                                     "Duplicated api call by key \"$idempotentValue\""
@@ -28,17 +28,8 @@ class IdempotentFactory(
                     }.map { request }
                 }
             )
-            .joinReactiveWithContext(
-                contextOrchestrate = { _, request -> idempotentFunc.invoke(request) },
-                contextRollback = { context, _ ->
-                    idempotentCache.delete(context.decodeContext(IDEMPOTENT_KEY, String::class))
-                }
-            )
             .commitReactiveWithContext(
-                contextOrchestrate = { context, request ->
-                    idempotentCache.setDone(context.decodeContext(IDEMPOTENT_KEY, String::class))
-                        .map { request }
-                },
+                contextOrchestrate = { _, request -> idempotentFunc.invoke(request) },
                 contextRollback = { context, _ ->
                     idempotentCache.delete(context.decodeContext(IDEMPOTENT_KEY, String::class))
                 }
