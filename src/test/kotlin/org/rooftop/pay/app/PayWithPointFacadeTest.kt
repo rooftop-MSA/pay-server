@@ -4,7 +4,7 @@ import io.kotest.core.annotation.DisplayName
 import io.kotest.core.spec.style.DescribeSpec
 import org.rooftop.api.identity.userGetByTokenRes
 import org.rooftop.api.pay.payPointReq
-import org.rooftop.netx.meta.EnableDistributedTransaction
+import org.rooftop.netx.meta.EnableSaga
 import org.rooftop.pay.Application
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.R2dbcConfigurer
@@ -13,8 +13,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ContextConfiguration
 import reactor.test.StepVerifier
 
+@EnableSaga
 @SpringBootTest
-@EnableDistributedTransaction
 @DisplayName("PayWithPointFacade 클래스의")
 @ContextConfiguration(
     classes = [

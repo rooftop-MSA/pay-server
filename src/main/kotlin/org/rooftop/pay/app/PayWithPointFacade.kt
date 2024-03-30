@@ -2,11 +2,11 @@ package org.rooftop.pay.app
 
 import org.rooftop.api.identity.UserGetByTokenRes
 import org.rooftop.api.pay.PayPointReq
+import org.rooftop.netx.api.SagaManager
+import org.rooftop.netx.api.SagaStartEvent
+import org.rooftop.netx.api.SagaStartListener
 import org.rooftop.netx.api.SuccessWith
-import org.rooftop.netx.api.TransactionManager
-import org.rooftop.netx.api.TransactionStartEvent
-import org.rooftop.netx.api.TransactionStartListener
-import org.rooftop.netx.meta.TransactionHandler
+import org.rooftop.netx.meta.SagaHandler
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.Payment
 import org.rooftop.pay.domain.Point
@@ -20,11 +20,11 @@ import reactor.util.retry.RetrySpec
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toJavaDuration
 
-@TransactionHandler
+@SagaHandler
 class PayWithPointFacade(
     private val payService: PayService,
     private val pointService: PointService,
-    private val transactionManager: TransactionManager,
+    private val sagaManager: SagaManager,
     private val identityWebClient: WebClient,
 ) {
 
@@ -72,7 +72,7 @@ class PayWithPointFacade(
 
     private fun Mono<Payment>.startTransaction(): Mono<Unit> {
         return this.flatMap { payment ->
-            transactionManager.start(
+            sagaManager.start(
                 event = PayConfirmEvent(
                     payment.id,
                     payment.userId,
@@ -84,12 +84,12 @@ class PayWithPointFacade(
         }
     }
 
-    @TransactionStartListener(
+    @SagaStartListener(
         event = PayConfirmEvent::class,
         successWith = SuccessWith.PUBLISH_JOIN,
     )
-    fun payWithPoint(transactionStartEvent: TransactionStartEvent): Mono<Point> {
-        return Mono.fromCallable { transactionStartEvent.decodeEvent(PayConfirmEvent::class) }
+    fun payWithPoint(sagaStartEvent: SagaStartEvent): Mono<Point> {
+        return Mono.fromCallable { sagaStartEvent.decodeEvent(PayConfirmEvent::class) }
             .flatMap {
                 payService.successPayment(it.payId)
                     .retryWhen(retryOptimisticLockingFailure)
@@ -99,8 +99,8 @@ class PayWithPointFacade(
                     .retryWhen(retryOptimisticLockingFailure)
             }
             .map {
-                val payConfirmEvent = transactionStartEvent.decodeEvent(PayConfirmEvent::class)
-                transactionStartEvent.setNextEvent(payConfirmEvent)
+                val payConfirmEvent = sagaStartEvent.decodeEvent(PayConfirmEvent::class)
+                sagaStartEvent.setNextEvent(payConfirmEvent)
                 it
             }
             .onErrorResume {
@@ -110,14 +110,14 @@ class PayWithPointFacade(
                 throw it
             }
             .doOnError {
-                val payConfirmEvent = transactionStartEvent.decodeEvent(PayConfirmEvent::class)
+                val payConfirmEvent = sagaStartEvent.decodeEvent(PayConfirmEvent::class)
                 val payRollbackEvent = PayRollbackEvent(
                     payConfirmEvent.payId,
                     payConfirmEvent.userId,
                     payConfirmEvent.orderId,
                     payConfirmEvent.totalPrice
                 )
-                transactionStartEvent.setNextEvent(payRollbackEvent)
+                sagaStartEvent.setNextEvent(payRollbackEvent)
                 throw it
             }
     }

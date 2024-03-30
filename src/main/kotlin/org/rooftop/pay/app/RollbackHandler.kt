@@ -1,8 +1,8 @@
 package org.rooftop.pay.app
 
-import org.rooftop.netx.api.TransactionRollbackEvent
-import org.rooftop.netx.api.TransactionRollbackListener
-import org.rooftop.netx.meta.TransactionHandler
+import org.rooftop.netx.api.SagaRollbackEvent
+import org.rooftop.netx.api.SagaRollbackListener
+import org.rooftop.netx.meta.SagaHandler
 import org.rooftop.pay.domain.PayService
 import org.rooftop.pay.domain.Point
 import org.rooftop.pay.domain.PointService
@@ -13,15 +13,15 @@ import reactor.util.retry.RetrySpec
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toJavaDuration
 
-@TransactionHandler
+@SagaHandler
 class RollbackHandler(
     private val payService: PayService,
     private val pointService: PointService,
 ) {
 
-    @TransactionRollbackListener(event = PayRollbackEvent::class)
-    fun handleTransactionRollbackEvent(transactionRollbackEvent: TransactionRollbackEvent): Mono<Point> {
-        return Mono.just(transactionRollbackEvent.decodeEvent(PayRollbackEvent::class))
+    @SagaRollbackListener(event = PayRollbackEvent::class)
+    fun handleTransactionRollbackEvent(sagaRollbackEvent: SagaRollbackEvent): Mono<Point> {
+        return Mono.just(sagaRollbackEvent.decodeEvent(PayRollbackEvent::class))
             .flatMap { payRollbackEvent ->
                 payService.rollbackPayment(payRollbackEvent.payId)
                     .retryWhen(retryOptimisticLockingFailure)

@@ -5,8 +5,8 @@ import io.kotest.core.spec.style.DescribeSpec
 import org.rooftop.api.identity.userGetByTokenRes
 import org.rooftop.api.pay.payPointReq
 import org.rooftop.api.pay.payRegisterOrderReq
-import org.rooftop.netx.api.TransactionManager
-import org.rooftop.netx.meta.EnableDistributedTransaction
+import org.rooftop.netx.api.SagaManager
+import org.rooftop.netx.meta.EnableSaga
 import org.rooftop.pay.Application
 import org.rooftop.pay.app.RedisContainer
 import org.rooftop.pay.domain.R2dbcConfigurer
@@ -17,8 +17,8 @@ import org.springframework.data.r2dbc.core.R2dbcEntityTemplate
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.web.reactive.server.WebTestClient
 
+@EnableSaga
 @AutoConfigureWebTestClient
-@EnableDistributedTransaction
 @DisplayName("통합테스트의")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(
@@ -33,7 +33,7 @@ internal class IntegrationTest(
     private val api: WebTestClient,
     private val r2dbcEntityTemplate: R2dbcEntityTemplate,
     private val mockIdentityServer: MockIdentityServer,
-    private val transactionManager: TransactionManager,
+    private val sagaManager: SagaManager,
 ) : DescribeSpec({
 
     afterEach {
@@ -42,7 +42,7 @@ internal class IntegrationTest(
 
     describe("createPay api는") {
         context("등록할 주문 정보와 transaction id를 전달받으면,") {
-            val transactionId = transactionManager.start("").block()!!
+            val transactionId = sagaManager.start("").block()!!
 
             val payRegisterOrderReq = payRegisterOrderReq {
                 this.orderId = 1L
@@ -64,7 +64,7 @@ internal class IntegrationTest(
 
             mockIdentityServer.enqueue200(userGetByTokenRes)
 
-            val transactionId = transactionManager.start("").block()!!
+            val transactionId = sagaManager.start("").block()!!
             val payRegisterOrderReq = payRegisterOrderReq {
                 this.orderId = ORDER_ID
                 this.userId = USER_ID
