@@ -17,5 +17,9 @@ class RedisContainer {
             "netx.port",
             redis.getMappedPort(6379).toString()
         )
+        System.setProperty(
+            "idempotent.port",
+            redis.getMappedPort(6379).toString()
+        )
     }
 }
