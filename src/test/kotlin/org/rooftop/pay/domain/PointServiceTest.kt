@@ -11,6 +11,7 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.r2dbc.config.EnableR2dbcAuditing
 import org.springframework.test.context.ContextConfiguration
 import reactor.test.StepVerifier
+import java.util.*
 import kotlin.reflect.full.memberProperties
 import kotlin.time.Duration.Companion.seconds
 
@@ -136,6 +137,7 @@ internal class PointServiceTest(
 
     describe("rollbackPoint 메소드는") {
         context("RollbackPointEvent 가 발행되면,") {
+            val idempotentKey = UUID.randomUUID().toString()
             val userId = 20L
             val paidPoint = 500L
 
@@ -144,11 +146,34 @@ internal class PointServiceTest(
             val expected = point(point = 1500L)
 
             it("point 를 롤백한다.") {
-                pointService.rollbackPoint(userId, paidPoint).subscribe()
+                pointService.rollbackPoint(idempotentKey, userId, paidPoint).subscribe()
 
                 eventually(10.seconds) {
                     StepVerifier.create(pointRepository.findByUserId(userId))
                         .assertNext { it ->
+                            it.shouldBeEqualToUsingFields(
+                                expected,
+                                Point::class.memberProperties.first { fields -> fields.name == "point" })
+                        }
+                }
+            }
+        }
+
+        context("이미 rollback된적이 있다면,") {
+            val idempotentKey = UUID.randomUUID().toString()
+            val userId = 21L
+            val paidPoint = 500L
+            val expected = point(point = 1500L)
+
+            pointService.createPoint(userId).subscribe()
+            pointService.rollbackPoint(idempotentKey, userId, paidPoint).subscribe()
+
+            it("point를 롤백하지 않는다.") {
+                pointService.rollbackPoint(idempotentKey, userId, paidPoint).subscribe()
+
+                eventually(10.seconds) {
+                    StepVerifier.create(pointRepository.findByUserId(userId))
+                        .assertNext {
                             it.shouldBeEqualToUsingFields(
                                 expected,
                                 Point::class.memberProperties.first { fields -> fields.name == "point" })

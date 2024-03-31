@@ -6,5 +6,5 @@ interface IdempotentCache {
 
     fun cache(key: String): Mono<Boolean>
 
-    fun delete(key: String): Mono<Unit>
+    fun isCached(key: String): Mono<Boolean>
 }

@@ -1,8 +1,6 @@
 package org.rooftop.pay.infra
 
-import org.rooftop.netx.api.OrchestratorFactory
 import org.rooftop.pay.core.IdempotentCache
-import org.rooftop.pay.core.IdempotentFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -19,16 +17,7 @@ class IdempotentConfigurer(
     @Value("\${idempotent.host}") private val host: String,
     @Value("\${idempotent.port}") private val port: String,
     @Value("\${idempotent.password:0000}") private val password: String,
-    private val orchestratorFactory: OrchestratorFactory,
 ) {
-
-    @Bean
-    fun idempotentFactory(): IdempotentFactory {
-        return IdempotentFactory(
-            idempotentCache(),
-            orchestratorFactory,
-        )
-    }
 
     @Bean
     fun idempotentCache(): IdempotentCache = RedisIdempotentCache(idempotentReactiveRedisTemplate())

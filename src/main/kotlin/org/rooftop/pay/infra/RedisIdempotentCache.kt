@@ -11,8 +11,16 @@ class RedisIdempotentCache(
     override fun cache(key: String): Mono<Boolean> =
         reactiveRedisTemplate.opsForValue().setIfAbsent("idempotent:$key", CACHED)
 
-    override fun delete(key: String): Mono<Unit> =
-        reactiveRedisTemplate.delete("idempotent:$key").map { }
+    override fun isCached(key: String): Mono<Boolean> =
+        reactiveRedisTemplate.opsForValue()["idempotent:$key"]
+            .switchIfEmpty(
+                Mono.just("false")
+            ).map {
+                when (it) {
+                    "false" -> false
+                    else -> true
+                }
+            }
 
     private companion object {
         private const val CACHED = "Cached"

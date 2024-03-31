@@ -9,6 +9,7 @@ import reactor.core.publisher.Mono
 class PointService(
     private val idGenerator: IdGenerator,
     private val pointRepository: PointRepository,
+    private val idempotentRepository: IdempotentRepository,
 ) {
 
     @Transactional
@@ -42,8 +43,16 @@ class PointService(
     }
 
     @Transactional
-    fun rollbackPoint(userId: Long, paidPoint: Long): Mono<Point> {
+    fun rollbackPoint(idempotentKey: String, userId: Long, paidPoint: Long): Mono<Point> {
         return pointRepository.findByUserId(userId)
+            .filterWhen {
+                idempotentRepository.existsById(idempotentKey)
+                    .map { it.not() }
+            }
+            .flatMap { point ->
+                idempotentRepository.save(Idempotent(idempotentKey))
+                    .map { point }
+            }
             .flatMap {
                 it.charge(paidPoint)
                 pointRepository.save(it)
