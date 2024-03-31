@@ -22,7 +22,7 @@ class PointRollbackHandler(
 ) {
 
     @SagaRollbackListener(event = PayRollbackEvent::class)
-    fun handleTransactionRollbackEvent(sagaRollbackEvent: SagaRollbackEvent): Mono<Point> {
+    fun handlePayRollbackEvent(sagaRollbackEvent: SagaRollbackEvent): Mono<Point> {
         return Mono.just(sagaRollbackEvent.decodeEvent(PayRollbackEvent::class))
             .flatMap { payRollbackEvent ->
                 payService.rollbackPayment(payRollbackEvent.payId)

@@ -1,6 +1,7 @@
 package org.rooftop.pay.domain
 
 import org.springframework.data.annotation.Id
+import org.springframework.data.domain.Persistable
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 
@@ -8,5 +9,10 @@ import org.springframework.data.relational.core.mapping.Table
 class Idempotent(
     @Id
     @Column("id")
-    val id: String,
-)
+    private val id: String,
+) : Persistable<String> {
+
+    override fun getId(): String = id
+
+    override fun isNew(): Boolean = true
+}

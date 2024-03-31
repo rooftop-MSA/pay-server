@@ -17,7 +17,7 @@ class Point(
     val userId: Long,
 
     @Column("point")
-    private var point: Long,
+    var point: Long,
 
     @Version
     private var version: Int? = null,
