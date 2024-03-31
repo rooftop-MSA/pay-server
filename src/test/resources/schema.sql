@@ -21,5 +21,5 @@ create table if not exists point(
 create index if not exists point_idx_user_id on point(user_id);
 
 create table if not exists idempotent(
-  id text primary key
+  id varchar(255) primary key
 );

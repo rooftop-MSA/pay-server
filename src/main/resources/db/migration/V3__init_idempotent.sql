@@ -1,3 +1,3 @@
 create table if not exists idempotent(
-  id text primary key
+  id varchar(255) primary key
 );
