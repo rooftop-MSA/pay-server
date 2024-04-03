@@ -41,10 +41,10 @@ internal class PayRollbackHandlerTest(
 
     describe("handlePayRollbackEvent 메소드는") {
         context("PayRollbackEvent를 받으면,") {
-            val sagaId = sagaManager.syncStart()
+            val sagaId = sagaManager.startSync()
 
             it("pay를 FAILED로 변경하고, point를 복구한다.") {
-                sagaManager.syncRollback(sagaId, "for test", payRollbackEvent)
+                sagaManager.rollbackSync(sagaId, "for test", payRollbackEvent)
 
                 eventually(5.seconds) {
                     val payment = paymentRepository.findById(payment.id).block()!!
